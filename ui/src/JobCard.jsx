@@ -1,3 +1,4 @@
+import { Button } from 'antd'
 import './JobCard.css'
 
 function matchLabel(score) {
@@ -9,7 +10,7 @@ function matchLabel(score) {
   return 'LOW'
 }
 
-export function JobCard({ job, isFilteredOut }) {
+export function JobCard({ job, isFilteredOut, jobKey, onRequestAnalysis, analysisLoading }) {
   const score = job.Match_Score != null ? Number(job.Match_Score) : null
   const label = matchLabel(score)
 
@@ -31,11 +32,18 @@ export function JobCard({ job, isFilteredOut }) {
           {job.Rejection_Reason && (
             <p className="job-reason">筛除原因: {job.Rejection_Reason}</p>
           )}
-          {job.job_url && (
-            <a href={job.job_url} target="_blank" rel="noopener noreferrer" className="job-link">
-              查看职位
-            </a>
-          )}
+          <div className="job-card-actions">
+            {job.job_url && (
+              <a href={job.job_url} target="_blank" rel="noopener noreferrer" className="job-link">
+                查看职位
+              </a>
+            )}
+            {onRequestAnalysis && jobKey != null && (
+              <Button type="primary" size="small" onClick={() => onRequestAnalysis(job, jobKey)} loading={analysisLoading}>
+                Analysis
+              </Button>
+            )}
+          </div>
         </div>
         <div className="job-card-score">
           {score != null ? (

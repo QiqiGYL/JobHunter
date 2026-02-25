@@ -78,6 +78,12 @@
   color: #888;
 }
 
+.job-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
 .job-link {
   font-size: 0.85rem;
   color: #0a7c42;
