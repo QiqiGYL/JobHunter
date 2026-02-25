@@ -1,0 +1,63 @@
+# Job Position Configuration
+# Usage: python hunt.py --config job_positions.yaml --position backend
+
+positions:
+  backend:
+    description: "Backend/Server-side development roles"
+    skills:
+      - "Java"
+      - "Python"
+      - "C++"
+      - "SQL"
+      - "Spring"
+      - "Docker"
+    weights:
+      semantic: 0.40
+      keyword: 0.35
+      title_bonus: 0.15
+      location_bonus: 0.10
+
+  frontend:
+    description: "Frontend/UI development roles"
+    skills:
+      - "JavaScript"
+      - "React"
+      - "TypeScript"
+      - "CSS"
+      - "HTML"
+      - "Vue"
+    weights:
+      semantic: 0.40
+      keyword: 0.35
+      title_bonus: 0.15
+      location_bonus: 0.10
+
+  data:
+    description: "Data Science/Analytics roles"
+    skills:
+      - "Python"
+      - "Statistics"
+      - "SQL"
+      - "Machine Learning"
+      - "Data Analysis"
+      - "R"
+    weights:
+      semantic: 0.40
+      keyword: 0.35
+      title_bonus: 0.15
+      location_bonus: 0.10
+
+  default:
+    description: "Default configuration"
+    skills:
+      - "C++"
+      - "Java"
+      - "Springboot"
+      - "SQLite"
+      - "Statistics"
+      - "Python"
+    weights:
+      semantic: 0.40
+      keyword: 0.35
+      title_bonus: 0.15
+      location_bonus: 0.10

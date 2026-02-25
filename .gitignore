@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+venv/
+.venv/
+env/
+
+# Node
+ui/node_modules/
+
+# Data & uploads (optional: remove data/uploads if you want to track resume)
+# data/uploads/
+
+# IDE & OS
+.idea/
+.vscode/
+*.log
+.DS_Store
+Thumbs.db
+
+# Build
+ui/dist/
+
+# Env / secrets
+.env
+.env.local
+*.pem
