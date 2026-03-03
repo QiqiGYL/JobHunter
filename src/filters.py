@@ -9,15 +9,22 @@ import re
 
 import pandas as pd
 
-# Intern / Co-op / Student
+# Intern / Co-op / Student（仅看标题，避免 "Preferred: co-op experience" 误杀）
 EXCLUDE_TITLE_DESC = re.compile(
     r"\b(Intern(ship)?|Co-?op|Student|University\s+Student|Campus\s+Hire|Rotational\s+Program)\b",
     re.IGNORECASE,
 )
 
-# 4 年及以上经验
+# 4 年及以上经验；含 XXX Lead（Test Lead, QA Lead, Team Lead 等）
 SENIOR_PATTERNS = re.compile(
-    r"\b([4-9]\+?\s*years?|[3-9]-[5-9]\s*years?|10\+?\s*years?|Senior|Staff|Principal|Tech\s+Lead|Engineering\s+Lead|Lead\s+Engineer)\b",
+    r"\b([4-9]\+?\s*years?|[3-9]-[5-9]\s*years?|10\+?\s*years?|Senior|Staff|Principal|"
+    r"Tech\s+Lead|Engineering\s+Lead|Lead\s+Engineer|\w+\s+Lead\b)\b",
+    re.IGNORECASE,
+)
+
+# 标题中的 senior 级别：Level 2–9、罗马数字 II/III/IV 等（Programmer III = Level 3）
+SENIOR_LEVEL_IN_TITLE = re.compile(
+    r"\bLevel\s+[2-9]\b|\s+(II|III|IV|V|VI|VII|VIII|IX)\b",
     re.IGNORECASE,
 )
 
@@ -42,6 +49,14 @@ ENTRY_LEVEL = re.compile(
     re.IGNORECASE,
 )
 
+# 标题明显与软件/开发无关（建筑、CAD 制图、估算等），排除
+NON_SOFTWARE_TITLE = re.compile(
+    r"\b(Construction\s+Estimator|Estimator\s+-\s+Construction|CAD\s+Technician|"
+    r"Drafting\s+Technician|Civil\s+Engineer|Structural\s+Engineer|Mechanical\s+Engineer\s+-\s+HVAC|"
+    r"Electrical\s+Estimator|Project\s+Estimator|Quantity\s+Surveyor)\b",
+    re.IGNORECASE,
+)
+
 
 def classify_job(row: pd.Series, skills: list[str]) -> tuple[str, str]:
     """返回 (target_level, rejection_reason)。"""
@@ -49,11 +64,17 @@ def classify_job(row: pd.Series, skills: list[str]) -> tuple[str, str]:
     desc = str(row.get("description") or "")
     combined = f"{title} {desc}"
 
-    if EXCLUDE_TITLE_DESC.search(combined):
-        return "Too Senior", "Exclude: Intern/Co-op/Student in title or description"
+    if EXCLUDE_TITLE_DESC.search(title):
+        return "Too Senior", "Exclude: Intern/Co-op/Student in title (description 'preferred' ignored)"
+    if NON_SOFTWARE_TITLE.search(title):
+        return "Too Senior", "Exclude: job title not software/tech related (e.g. Construction, CAD-only)"
+    if SENIOR_LEVEL_IN_TITLE.search(title):
+        return "Too Senior", "Exclude: Level 2+ or III/IV in title (too senior)"
     if EXCLUDE_2026_GRAD.search(combined):
         return "Too Senior", "Exclude: Position requires 2026 graduation (we graduate June 2025)"
-    if SENIOR_PATTERNS.search(combined):
+    # 标题已明确为初级（Junior/Entry/0-2 years）时，不因 description 里出现 Senior/Lead 等就排除（如 "work with senior engineers"）
+    title_entry = bool(ENTRY_LEVEL.search(title))
+    if not title_entry and SENIOR_PATTERNS.search(combined):
         return "Too Senior", "Exclude: 4+ years / Senior / Staff / Lead"
 
     grad_unlikely = bool(GRAD_MUST_BY_DATE.search(combined))

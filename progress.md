@@ -22,7 +22,19 @@
 
 > **维护说明**：每次做功能改进或重要修改时，在本节**顶部**新增一条，格式：`日期 | 简短描述`，下面可跟 1～3 行补充。
 
+- **2026-03-04**  
+  - 抓取：按站点打印进度（正在抓取 indeed/linkedin…、→ 完成 N 条）；country_indeed 已在 run_scrape 中传递。  
+  - 过滤：Intern/Co-op 仅看标题（避免 "Preferred: co-op experience" 误杀 Junior Engineer）；排除非软件岗（Construction Estimator、CAD Technician 等）；排除 Level 2+ / III/IV；排除 XXX Lead（Test Lead、QA Lead 等）；标题含 Junior/Entry 时不因 description 里的 Senior/Lead 排除。  
+  - hunt：ATS 批量分析默认 0（--analyze-top 0），抓取完成打印 ATS 开始提示。  
+  - 明日计划：将 filter 规则做成可配置（profile：毕业年份、经验范围、是否排除 Lead/Level 2+/非软件岗、banned 关键词等）。
+
+- **2026-03-01**  
+  - 抓取容错：`run_scrape` 改为按站点逐个调用 jobspy 再合并；某站（如 Indeed）出现 `RemoteDisconnected`/ConnectionError 时只打 WARNING 并跳过该站，其余站点结果照常返回，避免整次抓取崩溃。
+
 - **2026-02-14**  
+  - 抓取：`run_scrape` 增加 `country_indeed='Canada'` 传给 jobspy，便于 Indeed 返回加拿大职位；抓取后在 hunt 中打印各站点数量 `df["site"].value_counts()` 便于排查 Indeed 是否被去重掉。
+
+- **2026-02-26**  
   - 当前进度存入 git。  
   - 明日计划：处理 (1) LinkedIn 无 description — 在 `src/scrape.py` 中为 jobspy 增加 `linkedin_fetch_description=True`；(2) Indeed 在 xlsx 中不显示 — 排查去重逻辑（company+title 只保留一条）及是否需传 `country_indeed`。
 

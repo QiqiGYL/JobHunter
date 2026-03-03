@@ -32,9 +32,9 @@ def main():
     parser = argparse.ArgumentParser(
         description="职位抓取与筛选（四路打分：语义40%+关键词35%+标题15%+位置10%）"
     )
-    parser.add_argument("--search", default="Software Engineer", help="搜索职位关键词")
+    parser.add_argument("--search", default="Junior Software Engineer", help="搜索职位关键词")
     parser.add_argument("--location", default="Canada", help="工作地点")
-    parser.add_argument("--results", type=int, default=100, help="每个站点抓取数量")
+    parser.add_argument("--results", type=int, default=70, help="每个站点抓取数量")
     parser.add_argument("--sites", default="indeed,linkedin", help="站点，逗号分隔")
     parser.add_argument("--resume-pdf", default=RESUME_PDF_PATH, help="简历 PDF 路径")
     parser.add_argument("--out", default="data/job_hunt_results.xlsx", help="输出 Excel 路径")
@@ -42,8 +42,8 @@ def main():
     parser.add_argument("--config", default="", help="YAML/JSON 配置文件路径")
     parser.add_argument("--position", default="", help="配置中职位名称")
     parser.add_argument(
-        "--analyze-top", type=int, default=20, metavar="N",
-        help="对 Jobs 表前 N 名高分职位做 ATS 分析（0=不分析）",
+        "--analyze-top", type=int, default=0, metavar="N",
+        help="对 Jobs 表前 N 名做 ATS 分析（0=不分析，默认不跑；要跑可传 --analyze-top 20）",
     )
     parser.add_argument("--deepseek-key", default="", help="DeepSeek API Key")
     args = parser.parse_args()
@@ -91,6 +91,8 @@ def main():
     if df.empty:
         print("未抓到任何职位。")
         return
+    if "site" in df.columns:
+        print("抓取结果按站点:", df["site"].value_counts().to_dict())
 
     # 5) 打分 + 分类
     target_levels, rejection_reasons, match_scores = [], [], []
@@ -175,8 +177,10 @@ def main():
         kept.to_csv(csv_path, index=False, encoding="utf-8-sig")
         print(f"CSV 已写入: {csv_path.absolute()}")
 
-    # 9) ATS 分析
+    # 9) ATS 分析（可选：对前 N 名调用 DeepSeek，较慢；跳过请用 --analyze-top 0）
     if args.analyze_top > 0 and kept.shape[0] > 0:
+        n_analyze = min(args.analyze_top, len(kept))
+        print(f"正在对前 {n_analyze} 名职位做 ATS 分析（DeepSeek API，可能需数分钟）…")
         try:
             from src.ats import run_ats_analysis
             report_path = run_ats_analysis(
