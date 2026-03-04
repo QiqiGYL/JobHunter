@@ -129,7 +129,7 @@ def main():
     OUTPUT_COLUMNS = [
         "title", "company", "location", "job_url", "date_posted",
         "Target Level", "Match_Score", "Rejection_Reason",
-        "is_remote", "salary_range", "description",
+        "is_remote", "salary_range", "site", "description",
     ]
 
     def _keep_columns(frame: pd.DataFrame) -> pd.DataFrame:

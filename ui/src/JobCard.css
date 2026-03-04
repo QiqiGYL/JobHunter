@@ -66,6 +66,28 @@
   font-weight: 500;
 }
 
+.job-source-badge {
+  display: inline-block;
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: capitalize;
+  padding: 0.1rem 0.45rem;
+  border-radius: 4px;
+  background: #e8f4ee;
+  color: #0a7c42;
+  margin-right: 0.4rem;
+}
+
+.job-remote-badge {
+  display: inline-block;
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 0.1rem 0.45rem;
+  border-radius: 4px;
+  background: #e8f0fb;
+  color: #1a5fb4;
+}
+
 .job-level {
   margin: 0 0 0.2rem 0;
   font-size: 0.8rem;

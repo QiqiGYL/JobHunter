@@ -22,6 +22,9 @@
 
 > **维护说明**：每次做功能改进或重要修改时，在本节**顶部**新增一条，格式：`日期 | 简短描述`，下面可跟 1～3 行补充。
 
+- **2026-03-04**（续）  
+  - 前端：JobCard 新增来源徽章（indeed / linkedin 等绿色小标签）和 Remote 蓝色小标签；`hunt.py` 的 OUTPUT_COLUMNS 加入 `site` 字段，下次抓取后 xlsx 里会有来源列。
+
 - **2026-03-04**  
   - 抓取：按站点打印进度（正在抓取 indeed/linkedin…、→ 完成 N 条）；country_indeed 已在 run_scrape 中传递。  
   - 过滤：Intern/Co-op 仅看标题（避免 "Preferred: co-op experience" 误杀 Junior Engineer）；排除非软件岗（Construction Estimator、CAD Technician 等）；排除 Level 2+ / III/IV；排除 XXX Lead（Test Lead、QA Lead 等）；标题含 Junior/Entry 时不因 description 里的 Senior/Lead 排除。  
@@ -31,7 +34,7 @@
 - **2026-03-01**  
   - 抓取容错：`run_scrape` 改为按站点逐个调用 jobspy 再合并；某站（如 Indeed）出现 `RemoteDisconnected`/ConnectionError 时只打 WARNING 并跳过该站，其余站点结果照常返回，避免整次抓取崩溃。
 
-- **2026-02-14**  
+- **2026-02-2?**  
   - 抓取：`run_scrape` 增加 `country_indeed='Canada'` 传给 jobspy，便于 Indeed 返回加拿大职位；抓取后在 hunt 中打印各站点数量 `df["site"].value_counts()` 便于排查 Indeed 是否被去重掉。
 
 - **2026-02-26**  

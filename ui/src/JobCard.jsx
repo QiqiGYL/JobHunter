@@ -26,6 +26,10 @@ export function JobCard({ job, isFilteredOut, jobKey, onRequestAnalysis, analysi
               <span className="job-salary"> · {job.salary_range}</span>
             )}
           </p>
+          <p className="job-meta">
+            {job.site && <span className="job-source-badge">{job.site}</span>}
+            {job.is_remote === true || job.is_remote === 'True' ? <span className="job-remote-badge">Remote</span> : null}
+          </p>
           {job['Target Level'] && (
             <p className="job-level">Target: {job['Target Level']}</p>
           )}
