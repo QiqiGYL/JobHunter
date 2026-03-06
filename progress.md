@@ -43,7 +43,7 @@
 
 - **2026-02-26**  
   - 新增 ATS 分析结果持久化：缓存写入 `data/ats_analysis_cache.json`，缓存键优先用 `job_url`，否则用 title+company+description 哈希；分析接口先查缓存，命中则直接返回并带 `cached: true`。  
-  - 新增 `progress.md` 与 Cursor 规则：功能改进时自动更新本文件并带日期。
+  - 新增 `progress.md`：记录每次功能改进与日期，便于回顾开发历程。
 
 - **2026-02-09**  
   - hunt.py：四路评分（语义 + 关键词 + 标题 + 位置）、job_positions.yaml 与 --config/--position、关键词阈值与分数调整、标题关键词扩展（Entry-Level / Early-Career / Graduate）。  
