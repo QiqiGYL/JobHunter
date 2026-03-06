@@ -1,8 +1,8 @@
 import { JobCard } from './JobCard'
 
-export function JobList({ items, isFilteredOut, totalCount, page, totalPages, onPageChange, activeTab, baseIndex = 0, onRequestAnalysis, analysisLoadingKey }) {
+export function JobList({ items, isFilteredOut, totalCount, page, totalPages, onPageChange, activeTab, baseIndex = 0, onRequestAnalysis, analysisLoadingKey, t }) {
   if (!items?.length && totalCount === 0) {
-    return <p className="empty-list">暂无数据。请先运行 <code>python hunt.py</code> 生成 job_hunt_results.xlsx。</p>
+    return <p className="empty-list">{t.emptyList(<code>python hunt.py</code>)}</p>
   }
   return (
     <>
@@ -17,6 +17,7 @@ export function JobList({ items, isFilteredOut, totalCount, page, totalPages, on
               jobKey={jobKey}
               onRequestAnalysis={onRequestAnalysis}
               analysisLoading={analysisLoadingKey === jobKey}
+              t={t}
             />
           )
         })}
@@ -28,7 +29,7 @@ export function JobList({ items, isFilteredOut, totalCount, page, totalPages, on
             disabled={page <= 1}
             onClick={() => onPageChange?.(page - 1)}
           >
-            上一页
+            {t.prevPage}
           </button>
           <span>Page {page} / {totalPages}</span>
           <button
@@ -36,7 +37,7 @@ export function JobList({ items, isFilteredOut, totalCount, page, totalPages, on
             disabled={page >= totalPages}
             onClick={() => onPageChange?.(page + 1)}
           >
-            下一页
+            {t.nextPage}
           </button>
         </div>
       )}

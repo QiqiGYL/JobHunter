@@ -12,6 +12,13 @@ ui/node_modules/
 
 # Data & uploads (optional: remove data/uploads if you want to track resume)
 # data/uploads/
+data/ats_analysis_cache.json
+data/ats_analysis_report.md
+data/job_hunt_results.xlsx
+data/job_hunt_results.csv
+data/resume_analysis_report.json
+data/resume_analysis_report.txt
+data/uploads/current_resume.pdf
 
 # IDE & OS
 .idea/

@@ -38,6 +38,48 @@
   padding: 0.9rem 1.25rem;
 }
 
+/* Language switcher — fixed top-right corner */
+.lang-switcher {
+  position: fixed;
+  top: 1rem;
+  right: 1.25rem;
+  z-index: 999;
+  display: flex;
+  align-items: center;
+  background: #fff;
+  border: 1.5px solid #0a7c42;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.10);
+}
+
+.lang-seg {
+  border: none;
+  background: transparent;
+  color: #0a7c42;
+  font-size: 0.9rem;
+  font-weight: 600;
+  padding: 0.45rem 0.9rem;
+  cursor: pointer;
+  letter-spacing: 0.04em;
+  transition: background 0.15s, color 0.15s, font-size 0.15s;
+  line-height: 1;
+}
+
+.lang-seg + .lang-seg {
+  border-left: 1.5px solid #0a7c42;
+}
+
+.lang-seg-active {
+  background: #0a7c42;
+  color: #fff;
+  font-size: 1rem;
+}
+
+.lang-seg:not(.lang-seg-active):hover {
+  background: #e8f5ee;
+}
+
 .loading,
 .error {
   padding: 2rem;

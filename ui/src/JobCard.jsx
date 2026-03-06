@@ -10,7 +10,7 @@ function matchLabel(score) {
   return 'LOW'
 }
 
-export function JobCard({ job, isFilteredOut, jobKey, onRequestAnalysis, analysisLoading }) {
+export function JobCard({ job, isFilteredOut, jobKey, onRequestAnalysis, analysisLoading, t }) {
   const score = job.Match_Score != null ? Number(job.Match_Score) : null
   const label = matchLabel(score)
 
@@ -34,12 +34,12 @@ export function JobCard({ job, isFilteredOut, jobKey, onRequestAnalysis, analysi
             <p className="job-level">Target: {job['Target Level']}</p>
           )}
           {job.Rejection_Reason && (
-            <p className="job-reason">筛除原因: {job.Rejection_Reason}</p>
+            <p className="job-reason">{t.rejectionReason} {job.Rejection_Reason}</p>
           )}
           <div className="job-card-actions">
             {job.job_url && (
               <a href={job.job_url} target="_blank" rel="noopener noreferrer" className="job-link">
-                查看职位
+                {t.viewJob}
               </a>
             )}
             {onRequestAnalysis && jobKey != null && (

@@ -90,6 +90,8 @@ def _read_jobs_xlsx(path: Path) -> tuple[list, list]:
 @app.route("/api/jobs/analyze", methods=["POST"])
 def jobs_analyze():
     """对单个职位做 ATS 分析；结果按 job 持久化到 data/ats_analysis_cache.json。"""
+    if not os.environ.get("DEEPSEEK_API_KEY", "").strip():
+        return jsonify({"ok": False, "error": "no_api_key"}), 403
     resume_path = UPLOAD_DIR / RESUME_PDF_NAME
     if not resume_path.is_file():
         return jsonify({"ok": False, "error": "no resume uploaded"}), 400
