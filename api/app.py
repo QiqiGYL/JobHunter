@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-JobHunter API：提供职位列表（读 xlsx）与简历上传。
+JobHunter API: serves job listings (from xlsx) and handles resume upload / ATS analysis.
 """
 
 from __future__ import annotations
@@ -12,7 +12,7 @@ import os
 import sys
 from pathlib import Path
 
-# 项目根目录（api 的上一级），供 import src 使用
+# Add project root to sys.path so `src` package can be imported
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 from dotenv import load_dotenv
@@ -28,12 +28,12 @@ RESUME_PDF_NAME = "current_resume.pdf"
 ATS_CACHE_FILE = ROOT / "data" / "ats_analysis_cache.json"
 
 app = Flask(__name__, static_folder=None)
-app.config["MAX_CONTENT_LENGTH"] = 20 * 1024 * 1024  # 20MB
+app.config["MAX_CONTENT_LENGTH"] = 20 * 1024 * 1024  # 20 MB
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
 
 def _job_cache_key(job: dict) -> str:
-    """稳定缓存键：优先 job_url，否则用 title+company+description 的哈希。"""
+    """Stable cache key: prefer job_url hash; fall back to title+company+description hash."""
     url = (job.get("job_url") or "").strip()
     if url:
         return hashlib.sha256(url.encode("utf-8")).hexdigest()[:32]
@@ -46,7 +46,7 @@ def _job_cache_key(job: dict) -> str:
 
 
 def _load_ats_cache() -> dict:
-    """读取 ATS 分析缓存。"""
+    """Load ATS analysis cache from disk."""
     if not ATS_CACHE_FILE.is_file():
         return {}
     try:
@@ -57,14 +57,14 @@ def _load_ats_cache() -> dict:
 
 
 def _save_ats_cache(cache: dict) -> None:
-    """写入 ATS 分析缓存。"""
+    """Persist ATS analysis cache to disk."""
     ATS_CACHE_FILE.parent.mkdir(parents=True, exist_ok=True)
     with open(ATS_CACHE_FILE, "w", encoding="utf-8") as f:
         json.dump(cache, f, ensure_ascii=False, indent=2)
 
 
 def _read_jobs_xlsx(path: Path) -> tuple[list, list]:
-    """读取 xlsx，返回 (jobs, filtered_out)，均按 Match_Score 降序。"""
+    """Read xlsx and return (jobs, filtered_out), each sorted by Match_Score descending."""
     if not path.is_file():
         return [], []
     try:
@@ -72,24 +72,26 @@ def _read_jobs_xlsx(path: Path) -> tuple[list, list]:
         filtered_df = pd.read_excel(path, sheet_name="Filtered_Out")
     except Exception:
         return [], []
-    # 转为可 JSON 序列化的列表，NaN/NaT -> None（JSON 不接受 NaN）
+
     def to_records(df: pd.DataFrame) -> list:
         if df.empty:
             return []
         if "Match_Score" in df.columns:
             df = df.sort_values("Match_Score", ascending=False, na_position="last")
         records = df.to_dict(orient="records")
+        # Replace NaN/NaT with None so JSON serialization doesn't fail
         for r in records:
             for k, v in list(r.items()):
                 if pd.isna(v):
                     r[k] = None
         return records
+
     return to_records(jobs_df), to_records(filtered_df)
 
 
 @app.route("/api/jobs/analyze", methods=["POST"])
 def jobs_analyze():
-    """对单个职位做 ATS 分析；结果按 job 持久化到 data/ats_analysis_cache.json。"""
+    """Run ATS analysis for a single job; cache result in data/ats_analysis_cache.json."""
     if not os.environ.get("DEEPSEEK_API_KEY", "").strip():
         return jsonify({"ok": False, "error": "no_api_key"}), 403
     resume_path = UPLOAD_DIR / RESUME_PDF_NAME
@@ -138,7 +140,7 @@ def jobs_analyze():
 
 @app.route("/api/jobs", methods=["GET"])
 def get_jobs():
-    """返回 { jobs: [...], filteredOut: [...] }，按 Match_Score 降序。"""
+    """Return { jobs: [...], filteredOut: [...] } sorted by Match_Score descending."""
     xlsx = request.args.get("xlsx", str(DEFAULT_XLSX))
     path = Path(xlsx)
     if not path.is_absolute():
@@ -149,7 +151,7 @@ def get_jobs():
 
 @app.route("/api/resume", methods=["POST"])
 def upload_resume():
-    """上传 PDF 简历，保存为 data/uploads/current_resume.pdf。"""
+    """Upload a PDF resume and save it as data/uploads/current_resume.pdf."""
     if "file" not in request.files:
         return jsonify({"ok": False, "error": "no file"}), 400
     f = request.files["file"]
@@ -167,7 +169,7 @@ def upload_resume():
 
 @app.route("/api/resume/status", methods=["GET"])
 def resume_status():
-    """返回当前是否已有上传的简历。"""
+    """Return whether a resume has been uploaded."""
     p = UPLOAD_DIR / RESUME_PDF_NAME
     resp = jsonify({"uploaded": p.is_file()})
     resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate"
@@ -176,7 +178,7 @@ def resume_status():
 
 @app.route("/api/resume/file", methods=["GET"])
 def resume_file():
-    """返回当前简历 PDF 供预览（新窗口打开）。"""
+    """Stream the current resume PDF for in-browser preview."""
     p = UPLOAD_DIR / RESUME_PDF_NAME
     if not p.is_file():
         r404 = app.make_response(("", 404))

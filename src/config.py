@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-全局配置与工具函数：简历路径、技能列表、YAML/JSON 加载。
+Global configuration and helpers: resume path selection, skill loading, YAML/JSON config.
 """
 
 from __future__ import annotations
@@ -27,7 +27,8 @@ DEFAULT_RESUME_SKILLS = [
 RESUME_FILENAME = "Grace_cs3.pdf"
 _UPLOADED_RESUME = DATA_DIR / "uploads" / "current_resume.pdf"
 _FALLBACK_RESUME = ROOT_DIR / RESUME_FILENAME
-# 优先用上传的简历，没有则用项目根目录的 Grace_cs3.pdf，也可用环境变量 RESUME_PDF 覆盖
+
+# Priority: RESUME_PDF env var > uploaded via UI > fallback Grace_cs3.pdf
 RESUME_PDF_PATH = (
     os.environ.get("RESUME_PDF")
     or (str(_UPLOADED_RESUME) if _UPLOADED_RESUME.is_file() else str(_FALLBACK_RESUME))
@@ -43,13 +44,13 @@ DEFAULT_TECH_KEYWORDS = {
 
 
 def load_config_file(config_path: str) -> dict:
-    """从 YAML/JSON 读取配置。"""
+    """Load configuration from a YAML or JSON file."""
     if not config_path or not os.path.isfile(config_path):
         return {}
     try:
         if config_path.endswith(".yaml") or config_path.endswith(".yml"):
             if not HAS_YAML:
-                print(f"WARNING: PyYAML 未安装，跳过 YAML 配置 {config_path}")
+                print(f"WARNING: PyYAML not installed, skipping YAML config {config_path}")
                 return {}
             with open(config_path, "r", encoding="utf-8") as f:
                 return yaml.safe_load(f) or {}
@@ -57,12 +58,12 @@ def load_config_file(config_path: str) -> dict:
             with open(config_path, "r", encoding="utf-8") as f:
                 return json.load(f)
     except Exception as e:
-        print(f"WARNING: 读取配置文件失败 {config_path}: {e}")
+        print(f"WARNING: Failed to read config file {config_path}: {e}")
     return {}
 
 
 def load_skill_config(config_path: str) -> dict | None:
-    """从 YAML/JSON 加载职位和技能配置。"""
+    """Load position/skill configuration from a YAML or JSON file."""
     config = load_config_file(config_path)
     if not config:
         return None
@@ -70,7 +71,7 @@ def load_skill_config(config_path: str) -> dict | None:
 
 
 def load_tech_keywords() -> dict:
-    """加载技术关键词库（优先读 config/tech_keywords.yaml）。"""
+    """Load the tech keyword library (prefers config/tech_keywords.yaml)."""
     path = CONFIG_DIR / "tech_keywords.yaml"
     if path.is_file() and HAS_YAML:
         try:
@@ -79,7 +80,7 @@ def load_tech_keywords() -> dict:
                 return config.get("tech_keywords", {}) or {}
         except Exception:
             pass
-    # 兼容旧位置
+    # Fall back to legacy root-level location
     old_path = ROOT_DIR / "tech_keywords.yaml"
     if old_path.is_file() and HAS_YAML:
         try:
@@ -92,7 +93,7 @@ def load_tech_keywords() -> dict:
 
 
 def auto_update_resume_skills(resume_pdf_path: str) -> list[str]:
-    """自动从简历 PDF 提取技术关键词作为 RESUME_SKILLS；失败时返回默认值。"""
+    """Auto-extract tech keywords from the resume PDF; falls back to DEFAULT_RESUME_SKILLS."""
     if not resume_pdf_path or not os.path.isfile(resume_pdf_path):
         return list(DEFAULT_RESUME_SKILLS)
     try:
@@ -106,8 +107,8 @@ def auto_update_resume_skills(resume_pdf_path: str) -> list[str]:
             found.extend(category_dict.keys())
         if found:
             skills = sorted(set(found))
-            print(f"已从简历自动提取 {len(skills)} 个技能关键词: {', '.join(skills)}")
+            print(f"Auto-extracted {len(skills)} skill keywords from resume: {', '.join(skills)}")
             return skills
     except Exception as e:
-        print(f"WARNING: 自动提取简历关键词失败，使用默认 RESUME_SKILLS: {e}")
+        print(f"WARNING: Failed to auto-extract resume keywords, using defaults: {e}")
     return list(DEFAULT_RESUME_SKILLS)

@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """
-职位抓取：调用 jobspy。按站点分别抓取后合并，某一站失败不影响其他站结果。
+Job scraping: calls jobspy per site and merges results.
+If one site fails (e.g. Indeed connection error), other sites still complete normally.
 """
 
 from __future__ import annotations
@@ -21,9 +22,11 @@ def run_scrape(
     site_name: list[str] | None = None,
     country_indeed: str = "Canada",
 ) -> pd.DataFrame:
-    """按站点分别抓取后合并；某站失败（如 Indeed 断连）时保留其他站数据。
-    各站点数量由 RESULTS_PER_SITE 控制（indeed=100, linkedin=30），未配置的站点用 results_wanted。
-    LinkedIn 开启 linkedin_fetch_description 以获取完整 JD（较慢）。
+    """Scrape each site separately and concatenate results.
+
+    Per-site result counts are controlled by RESULTS_PER_SITE
+    (indeed=100, linkedin=30); sites not listed fall back to results_wanted.
+    LinkedIn uses linkedin_fetch_description=True for full JD text (slower).
     """
     from jobspy import scrape_jobs
     if site_name is None:
@@ -31,7 +34,7 @@ def run_scrape(
     frames = []
     for site in site_name:
         n = RESULTS_PER_SITE.get(site, results_wanted)
-        print(f"正在抓取 {site}（最多 {n} 条）… 若久无输出属正常，请勿 kill。")
+        print(f"Scraping {site} (up to {n} results)… this may take a while, please wait.")
         try:
             df = scrape_jobs(
                 site_name=[site],
@@ -44,11 +47,11 @@ def run_scrape(
             )
             if df is not None and not df.empty:
                 frames.append(df)
-                print(f"  → {site} 完成，得到 {len(df)} 条。")
+                print(f"  → {site} done: {len(df)} results.")
             else:
-                print(f"  → {site} 返回 0 条。")
+                print(f"  → {site} returned 0 results.")
         except Exception as e:
-            print(f"WARNING: 抓取 {site} 失败 ({e!r})，已跳过该站点。")
+            print(f"WARNING: Failed to scrape {site} ({e!r}), skipping.")
     if not frames:
         return pd.DataFrame()
     return pd.concat(frames, ignore_index=True)

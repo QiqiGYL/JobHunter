@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-职位过滤规则：经验年限、Intern/Co-op、毕业年份等。
+Job filtering rules: experience level, intern/co-op, graduation year, non-software roles.
 """
 
 from __future__ import annotations
@@ -9,26 +9,27 @@ import re
 
 import pandas as pd
 
-# Intern / Co-op / Student（仅看标题，避免 "Preferred: co-op experience" 误杀）
+# Intern / Co-op / Student — checked against title only to avoid
+# false positives like "preferred co-op experience" in description
 EXCLUDE_TITLE_DESC = re.compile(
     r"\b(Intern(ship)?|Co-?op|Student|University\s+Student|Campus\s+Hire|Rotational\s+Program)\b",
     re.IGNORECASE,
 )
 
-# 4 年及以上经验；含 XXX Lead（Test Lead, QA Lead, Team Lead 等）
+# 4+ years experience; also catches XXX Lead titles (Test Lead, QA Lead, Team Lead, etc.)
 SENIOR_PATTERNS = re.compile(
     r"\b([4-9]\+?\s*years?|[3-9]-[5-9]\s*years?|10\+?\s*years?|Senior|Staff|Principal|"
     r"Tech\s+Lead|Engineering\s+Lead|Lead\s+Engineer|\w+\s+Lead\b)\b",
     re.IGNORECASE,
 )
 
-# 标题中的 senior 级别：Level 2–9、罗马数字 II/III/IV 等（Programmer III = Level 3）
+# Explicit seniority levels in title: Level 2–9, Roman numerals II/III/IV+ (e.g. Programmer III)
 SENIOR_LEVEL_IN_TITLE = re.compile(
     r"\bLevel\s+[2-9]\b|\s+(II|III|IV|V|VI|VII|VIII|IX)\b",
     re.IGNORECASE,
 )
 
-# 2026 毕业要求
+# Requires 2026 graduation (user graduates June 2025)
 EXCLUDE_2026_GRAD = re.compile(
     r"\b(Class\s+of\s+2026|2026\s+Grad(uate)?|Graduation\s+(by\s+)?2026|December\s+2025\s+Grad)\b",
     re.IGNORECASE,
@@ -49,29 +50,29 @@ ENTRY_LEVEL = re.compile(
     re.IGNORECASE,
 )
 
-# 标题明显与软件/开发无关，排除
+# Job titles clearly unrelated to software / development
 NON_SOFTWARE_TITLE = re.compile(
     r"\b("
-    # 建筑、土木、估算
+    # Construction, civil, estimation
     r"Construction\s+Estimator|Estimator\s*-\s*Construction|CAD\s+Technician|"
     r"Drafting\s+Technician|Civil\s+Engineer|Structural\s+Engineer|"
     r"Mechanical\s+Engineer|Electrical\s+Engineer|Electrical\s+Estimator|"
     r"Project\s+Estimator|Quantity\s+Surveyor|"
-    # 环境、地质、水文、自然科学
+    # Environmental, geological, natural sciences
     r"Hydrologist|Hydrogeologist|Geologist|Geophysicist|Geoscientist|"
     r"Environmental\s+Scientist|Environmental\s+Engineer|Environmental\s+Technician|"
     r"Environmental\s+Consultant|Ecologist|Biologist|Microbiologist|"
     r"Chemist|Biochemist|Lab\s+Technician|Laboratory\s+Technician|"
     r"Field\s+Technician|Soil\s+Scientist|"
-    # 医疗、护理
+    # Healthcare
     r"Nurse|Nursing|Pharmacist|Physician|Dentist|Physiotherapist|"
     r"Occupational\s+Therapist|Radiologist|Veterinarian|"
-    # 会计、金融（非技术岗）
+    # Accounting, finance (non-technical)
     r"Accountant|Bookkeeper|Auditor|Tax\s+Specialist|Payroll\s+Specialist|"
-    # 市场、销售（非技术岗）
+    # Marketing, sales (non-technical)
     r"Sales\s+Representative|Account\s+Executive|Marketing\s+Coordinator|"
     r"Social\s+Media\s+Manager|Copywriter|Graphic\s+Designer|"
-    # 其他明显非软件岗
+    # Trades and manual labour
     r"Electrician|Plumber|HVAC\s+Technician|Welder|Machinist|"
     r"Truck\s+Driver|Warehouse\s+Associate|Forklift\s+Operator"
     r")\b",
@@ -80,7 +81,7 @@ NON_SOFTWARE_TITLE = re.compile(
 
 
 def classify_job(row: pd.Series, skills: list[str]) -> tuple[str, str]:
-    """返回 (target_level, rejection_reason)。"""
+    """Return (target_level, rejection_reason) for a job row."""
     title = str(row.get("title") or "")
     desc = str(row.get("description") or "")
     combined = f"{title} {desc}"
@@ -93,7 +94,9 @@ def classify_job(row: pd.Series, skills: list[str]) -> tuple[str, str]:
         return "Too Senior", "Exclude: Level 2+ or III/IV in title (too senior)"
     if EXCLUDE_2026_GRAD.search(combined):
         return "Too Senior", "Exclude: Position requires 2026 graduation (we graduate June 2025)"
-    # 标题已明确为初级（Junior/Entry/0-2 years）时，不因 description 里出现 Senior/Lead 等就排除（如 "work with senior engineers"）
+
+    # If the title itself signals entry-level (Junior/Associate/Entry-Level), do not exclude
+    # based on senior keywords that appear in context (e.g. "work with senior engineers")
     title_entry = bool(ENTRY_LEVEL.search(title))
     if not title_entry and SENIOR_PATTERNS.search(combined):
         return "Too Senior", "Exclude: 4+ years / Senior / Staff / Lead"
@@ -112,7 +115,7 @@ def classify_job(row: pd.Series, skills: list[str]) -> tuple[str, str]:
 
 
 def location_score(location: str) -> int:
-    """地理优先级打分：Toronto/Mississauga 100, Ontario 50, 其他 0。"""
+    """Location priority score: Toronto/Mississauga 100, Ontario 50, elsewhere 0."""
     if not location:
         return 0
     loc = str(location).strip().lower()

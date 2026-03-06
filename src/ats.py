@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-DeepSeek ATS 深度分析：调用 API 模拟 ATS，生成简历优化建议。
+DeepSeek ATS deep analysis: calls the API to simulate ATS scoring and generate resume improvement suggestions.
 """
 
 from __future__ import annotations
@@ -15,24 +15,22 @@ import pandas as pd
 
 from src.resume import extract_text_from_pdf, clean_resume_text
 
-ATS_SYSTEM_PROMPT = """Role: 你是一位在大厂（如 Google, Stripe, Meta）工作多年的资深技术校招 HR 兼 ATS 算法专家。
+ATS_SYSTEM_PROMPT = """Role: You are a senior technical recruiter and ATS algorithm expert with years of experience at top tech companies (Google, Stripe, Meta).
 
-Task: 请对比提供的 [Resume] 和 [Job Description]，进行一次深度 ATS 兼容性审计。
+Task: Compare the provided [Resume] and [Job Description], and perform a deep ATS compatibility audit.
 
-Output Requirements (请按以下结构输出):
+Output Requirements (follow this structure exactly):
 
-1. **ATS Match Score**: 给出一个 0-100 的分数（考虑硬性技能、经验年限、教育背景）。
-2. **Gap Analysis (缺啥补啥)**: 
-   - 找出 JD 中强调了但简历中完全没有出现的 3-5 个关键技术词或软技能。
-3. **Resume Surgery (简历手术)**:
-   - 针对本项目，请提供 2-3 条“直接可复制”的简历描述优化。
-   - 格式：[原描述] -> [优化后描述（加入量化成果和 JD 关键词）]。
-4. **ATS Red Flags**: 检查简历是否有排版问题、无法解析的字符或过于复杂的格式。
-5. **Interview Prediction**: 简短评估：这个申请人拿到 OA/面试的概率是多少？核心阻碍是什么？
+1. **ATS Match Score**: Give a score from 0–100 (considering hard skills, years of experience, and educational background).
+2. **Gap Analysis**: Identify 3–5 key technical terms or soft skills emphasized in the JD but completely absent from the resume.
+3. **Resume Surgery**: Provide 2–3 "copy-paste ready" resume bullet improvements tailored to this job.
+   Format: [Original] -> [Optimized (with quantified results and JD keywords)]
+4. **ATS Red Flags**: Check for formatting issues, unparseable characters, or overly complex layouts.
+5. **Interview Prediction**: Brief assessment — what is the probability of getting an OA/interview? What are the main blockers?
 
-请用中文回答。回答完成后，在最后单独用一行输出一个 JSON 块（便于程序解析），格式如下，不要省略字段：
+After your analysis, output a single JSON block on its own line for programmatic parsing. Do not omit any fields:
 ```json
-{"ats_match_score": 数字0到100, "missing_keywords": ["关键词1", "关键词2"], "resume_edits": [{"original": "原描述", "optimized": "优化后描述"}], "ats_red_flags": "红色风险说明", "interview_prediction": "面试概率与阻碍说明"}
+{"ats_match_score": 0-100, "missing_keywords": ["keyword1", "keyword2"], "resume_edits": [{"original": "original text", "optimized": "optimized text"}], "ats_red_flags": "red flag description", "interview_prediction": "prediction and blockers"}
 ```"""
 
 DEEPSEEK_API_URL = "https://api.deepseek.com/v1/chat/completions"
@@ -40,7 +38,7 @@ DEFAULT_MODEL = "deepseek-chat"
 
 
 def _parse_analysis_json(raw: str) -> dict | None:
-    """从 DeepSeek 回复中提取 ```json ... ``` 块并解析。"""
+    """Extract and parse the ```json ... ``` block from the DeepSeek response."""
     if not raw or not isinstance(raw, str):
         return None
     match = re.search(r"```json\s*([\s\S]*?)\s*```", raw)
@@ -49,7 +47,7 @@ def _parse_analysis_json(raw: str) -> dict | None:
             return json.loads(match.group(1).strip())
         except json.JSONDecodeError:
             pass
-    # 尝试整段解析
+    # Attempt to parse the entire response as JSON
     try:
         return json.loads(raw.strip())
     except json.JSONDecodeError:
@@ -67,7 +65,7 @@ def _call_deepseek(api_key: str, system_prompt: str, user_message: str) -> str:
     try:
         import requests
     except ImportError:
-        return "[错误: 未安装 requests，请执行 pip install requests]"
+        return "[Error: 'requests' package not installed. Run: pip install requests]"
 
     headers = {
         "Authorization": f"Bearer {api_key}",
@@ -90,13 +88,13 @@ def _call_deepseek(api_key: str, system_prompt: str, user_message: str) -> str:
         choices = data.get("choices", [])
         if choices and isinstance(choices[0].get("message", {}).get("content"), str):
             return choices[0]["message"]["content"].strip()
-        return "[API 返回格式异常]"
+        return "[Unexpected API response format]"
     except Exception as e:
-        return f"[请求失败: {e}]"
+        return f"[Request failed: {e}]"
 
 
 def _build_user_message(resume_text: str, job_title: str, job_company: str, job_description: str) -> str:
-    jd_text = f"【职位标题】{job_title}\n【公司】{job_company}\n【职位描述】\n{job_description}"
+    jd_text = f"[Job Title] {job_title}\n[Company] {job_company}\n[Job Description]\n{job_description}"
     return f"---\n[Resume]:\n{resume_text}\n---\n[Job Description]:\n{jd_text}"
 
 
@@ -107,7 +105,7 @@ def analyze_one_job(
     job_description: str,
     api_key: str | None = None,
 ) -> dict:
-    """对单个职位做 ATS 分析，返回结构化结果或带 raw 的降级结果。"""
+    """Run ATS analysis for a single job. Returns structured result or raw fallback."""
     key = (api_key or os.environ.get("DEEPSEEK_API_KEY", "")).strip()
     if not key:
         return {"ok": False, "error": "DEEPSEEK_API_KEY not set", "analysis": None, "raw": None}
@@ -140,27 +138,27 @@ def run_ats_analysis(
     api_key: str | None = None,
     output_path: str | None = None,
 ) -> str:
-    """读取 Excel Jobs 表前 top_n 条高分职位，调用 DeepSeek 做 ATS 分析。"""
+    """Read top_n highest-scoring jobs from the Excel and run DeepSeek ATS analysis on each."""
     key = api_key or os.environ.get("DEEPSEEK_API_KEY", "").strip()
     if not key:
-        print("WARNING: 未设置 DEEPSEEK_API_KEY，跳过 ATS 深度分析")
+        print("WARNING: DEEPSEEK_API_KEY not set, skipping ATS analysis")
         return ""
 
     if output_path is None:
         output_path = str(Path(excel_path).parent / "ats_analysis_report.md")
 
     if not os.path.isfile(excel_path):
-        print(f"WARNING: Excel 不存在 {excel_path}，跳过 ATS 分析")
+        print(f"WARNING: Excel file not found: {excel_path}, skipping ATS analysis")
         return ""
 
     try:
         df = pd.read_excel(excel_path, sheet_name="Jobs")
     except Exception as e:
-        print(f"WARNING: 读取 Excel 失败: {e}")
+        print(f"WARNING: Failed to read Excel: {e}")
         return ""
 
     if df.empty:
-        print("WARNING: Jobs 表为空，跳过 ATS 分析")
+        print("WARNING: Jobs sheet is empty, skipping ATS analysis")
         return ""
 
     if "Match_Score" in df.columns:
@@ -170,11 +168,11 @@ def run_ats_analysis(
 
     resume_text = _get_resume_text(resume_pdf_path)
     if not resume_text or len(resume_text.strip()) < 50:
-        print("WARNING: 简历内容过短或无法读取，ATS 分析可能不准确")
+        print("WARNING: Resume content is too short or unreadable; ATS analysis may be inaccurate")
 
     lines = [
-        "# ATS 深度分析报告", "",
-        f"生成时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
+        "# ATS Deep Analysis Report", "",
+        f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
         "", "---", "",
     ]
 
@@ -189,22 +187,22 @@ def run_ats_analysis(
         reply = _call_deepseek(key, ATS_SYSTEM_PROMPT, user_message)
         parsed = _parse_analysis_json(reply)
 
-        lines.append(f"## 职位 {i + 1}: {title} @ {company}")
+        lines.append(f"## Job {i + 1}: {title} @ {company}")
         lines.append("")
-        lines.append(f"**匹配分数**: {score}/100")
+        lines.append(f"**Match Score**: {score}/100")
         if job_url:
-            lines.append(f"**职位链接**: {job_url}")
+            lines.append(f"**Job URL**: {job_url}")
         lines.append("")
-        lines.append("### ATS 分析与建议")
+        lines.append("### ATS Analysis & Suggestions")
         lines.append("")
         lines.append(reply)
         if parsed and isinstance(parsed, dict):
             lines.append("")
-            lines.append("### 结构化摘要")
+            lines.append("### Structured Summary")
             lines.append("")
-            lines.append(f"- **ATS 分数**: {parsed.get('ats_match_score', '—')}")
-            lines.append(f"- **缺失关键词**: {', '.join(parsed.get('missing_keywords') or [])}")
-            lines.append(f"- **面试预测**: {parsed.get('interview_prediction', '—')}")
+            lines.append(f"- **ATS Score**: {parsed.get('ats_match_score', '—')}")
+            lines.append(f"- **Missing Keywords**: {', '.join(parsed.get('missing_keywords') or [])}")
+            lines.append(f"- **Interview Prediction**: {parsed.get('interview_prediction', '—')}")
         lines.extend(["", "---", ""])
 
     report_text = "\n".join(lines)
@@ -212,5 +210,5 @@ def run_ats_analysis(
     with open(output_path, "w", encoding="utf-8") as f:
         f.write(report_text)
 
-    print(f"ATS 深度分析报告已生成: {os.path.abspath(output_path)}")
+    print(f"ATS analysis report saved: {os.path.abspath(output_path)}")
     return os.path.abspath(output_path)

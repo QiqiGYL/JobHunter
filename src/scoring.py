@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-职位打分：语义相似度、关键词硬分、标题加分、位置加分。
+Job scoring: semantic similarity, keyword hard score, title bonus, location bonus.
 """
 
 from __future__ import annotations
@@ -22,24 +22,24 @@ SCORE_WEIGHTS = {
     "location_bonus": 0.10,
 }
 
-# 语义模型（全局单例缓存）
+# Global singleton cache for the sentence-transformer model
 _SEMANTIC_MODEL = None
 
 
 def get_semantic_model():
-    """加载并缓存 SentenceTransformer('all-MiniLM-L6-v2')。"""
+    """Load and cache SentenceTransformer('all-MiniLM-L6-v2')."""
     global _SEMANTIC_MODEL
     if _SEMANTIC_MODEL is None:
         try:
             from sentence_transformers import SentenceTransformer
             _SEMANTIC_MODEL = SentenceTransformer("all-MiniLM-L6-v2")
         except Exception as e:
-            print(f"WARNING: 语义模型加载失败: {e}")
+            print(f"WARNING: Failed to load semantic model: {e}")
     return _SEMANTIC_MODEL
 
 
 def _keyword_hard_score(text: str, skills: list[str]) -> int:
-    """关键词硬分 0~100。"""
+    """Keyword hard score 0–100 using fuzzy matching."""
     if not text or not skills:
         return 0
     try:
@@ -55,14 +55,14 @@ def _keyword_hard_score(text: str, skills: list[str]) -> int:
 
 
 def _title_bonus(title: str) -> int:
-    """标题加分：含 Junior/New Grad/Entry 等则 +15。"""
+    """Title bonus: +15 if title contains Junior / New Grad / Entry-Level etc."""
     if not title:
         return 0
     return 15 if TITLE_BONUS_KEYWORDS.search(title) else 0
 
 
 def _location_bonus(location: str) -> int:
-    """位置加分：Toronto/Mississauga +10，Ontario +5。"""
+    """Location bonus: Toronto/Mississauga +10, Ontario +5, elsewhere 0."""
     if not location:
         return 0
     loc = str(location).strip().lower()
@@ -74,7 +74,7 @@ def _location_bonus(location: str) -> int:
 
 
 def _semantic_sim(model, resume_emb, text: str) -> float:
-    """简历与文本的余弦相似度 0~1。"""
+    """Cosine similarity between resume embedding and job text (0–1)."""
     if not text or len(text.strip()) < 5:
         return 0.0
     if model is None or resume_emb is None:
@@ -97,7 +97,11 @@ def compute_hybrid_score(
     skills: list[str],
     weights: dict | None = None,
 ) -> int:
-    """四路综合分 0~100。"""
+    """4-component hybrid score 0–100.
+
+    Components: semantic (40%) + keyword (35%) + title bonus (15%) + location bonus (10%).
+    Falls back to title text when description is too short.
+    """
     if weights is None:
         weights = SCORE_WEIGHTS
 

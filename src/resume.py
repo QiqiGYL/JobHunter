@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-简历处理：PDF 提取、文本清洗、关键词提取与对比。
+Resume processing: PDF text extraction, text cleaning, keyword extraction and comparison.
 """
 
 from __future__ import annotations
@@ -16,7 +16,7 @@ except ImportError:
 
 
 def extract_text_from_pdf(pdf_path: str) -> str:
-    """使用 pdfplumber 从 PDF 提取正文。"""
+    """Extract raw text from a PDF using pdfplumber."""
     if not pdf_path or not os.path.isfile(pdf_path):
         return ""
     if not HAS_PDFPLUMBER:
@@ -34,7 +34,7 @@ def extract_text_from_pdf(pdf_path: str) -> str:
 
 
 def clean_resume_text(text: str) -> str:
-    """过滤非 ASCII 乱码，保留英文、数字及 C++ 等符号。"""
+    """Strip non-ASCII characters while preserving English, digits, and symbols like C++."""
     if not text:
         return ""
     allowed_extra = "+-."
@@ -46,12 +46,12 @@ def clean_resume_text(text: str) -> str:
 
 
 def get_resume_text(resume_pdf_path: str) -> str:
-    """读取并清洗简历全文。"""
+    """Read and clean the full resume text from a PDF file."""
     if not resume_pdf_path or not os.path.isfile(resume_pdf_path):
         return ""
     raw = extract_text_from_pdf(resume_pdf_path)
     text = clean_resume_text(raw)
-    print(f"DEBUG: 清洗后简历前100字符: {text[:100]}")
+    print(f"DEBUG: first 100 chars of cleaned resume: {text[:100]}")
     return text
 
 
@@ -59,14 +59,16 @@ def extract_keywords_from_resume(
     pdf_path: str,
     keyword_dict: dict[str, list[str]],
 ) -> dict:
-    """
-    从简历 PDF 中提取所有技术关键词，并按类别统计。
+    """Extract and count tech keywords from a resume PDF, grouped by category.
+
+    For keywords containing '.' or '/' (e.g. React.js, CI/CD), plain substring
+    matching is used instead of word boundaries to avoid regex edge cases.
 
     Returns:
         {
-            "全部关键词": {category: {keyword: 出现次数, ...}, ...},
+            "全部关键词": {category: {keyword: count, ...}, ...},
             "缺失关键词": [keywords not found],
-            "简历文本": "清洗后的简历全文"
+            "简历文本": "cleaned resume text"
         }
     """
     raw = extract_text_from_pdf(pdf_path)
@@ -80,7 +82,6 @@ def extract_keywords_from_resume(
         found_keywords[category] = {}
         for keyword in keywords:
             kw_escaped = re.escape(keyword.lower())
-            # 对含 . 或 / 的关键词（如 React.js、CI/CD）不加词边界，用简单子串匹配
             if re.search(r'[./]', keyword):
                 pattern = re.compile(kw_escaped, re.IGNORECASE)
             else:
@@ -108,7 +109,7 @@ def compare_with_resume_skills(
     keywords_result: dict,
     resume_skills: list[str],
 ) -> dict:
-    """对比简历中发现的关键词和 RESUME_SKILLS 列表。"""
+    """Compare keywords found in the resume against the RESUME_SKILLS list."""
     found_in_resume = set()
     for category_dict in keywords_result["全部关键词"].values():
         found_in_resume.update(category_dict.keys())

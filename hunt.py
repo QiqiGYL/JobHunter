@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-职位抓取与筛选入口 — 针对 2025 年 6 月毕业、初级岗位精准过滤。
-核心逻辑位于 src/ 包内，此文件仅做命令行入口。
+Job scraping and filtering entry point — optimised for June 2025 graduates targeting junior roles.
+Core logic lives in the src/ package; this file is the CLI entry point only.
 """
 
 from __future__ import annotations
@@ -30,29 +30,29 @@ from src.scrape import run_scrape
 
 def main():
     parser = argparse.ArgumentParser(
-        description="职位抓取与筛选（四路打分：语义40%+关键词35%+标题15%+位置10%）"
+        description="Job scraping & scoring (4-component: semantic 40% + keyword 35% + title 15% + location 10%)"
     )
-    parser.add_argument("--search", default="Junior Software Engineer", help="搜索职位关键词")
-    parser.add_argument("--location", default="Canada", help="工作地点")
-    parser.add_argument("--results", type=int, default=30, help="每个站点抓取数量")
-    parser.add_argument("--sites", default="indeed,linkedin", help="站点，逗号分隔")
-    parser.add_argument("--resume-pdf", default=RESUME_PDF_PATH, help="简历 PDF 路径")
-    parser.add_argument("--out", default="data/job_hunt_results.xlsx", help="输出 Excel 路径")
-    parser.add_argument("--csv", action="store_true", help="同时输出 CSV")
-    parser.add_argument("--config", default="", help="YAML/JSON 配置文件路径")
-    parser.add_argument("--position", default="", help="配置中职位名称")
+    parser.add_argument("--search", default="Junior Software Engineer", help="Job search query")
+    parser.add_argument("--location", default="Canada", help="Job location")
+    parser.add_argument("--results", type=int, default=30, help="Results per site")
+    parser.add_argument("--sites", default="indeed,linkedin", help="Comma-separated site list")
+    parser.add_argument("--resume-pdf", default=RESUME_PDF_PATH, help="Path to resume PDF")
+    parser.add_argument("--out", default="data/job_hunt_results.xlsx", help="Output Excel path")
+    parser.add_argument("--csv", action="store_true", help="Also write a CSV copy")
+    parser.add_argument("--config", default="", help="YAML/JSON config file path")
+    parser.add_argument("--position", default="", help="Position name in config")
     parser.add_argument(
         "--analyze-top", type=int, default=0, metavar="N",
-        help="对 Jobs 表前 N 名做 ATS 分析（0=不分析，默认不跑；要跑可传 --analyze-top 20）",
+        help="Run ATS analysis on top N jobs after scraping (0 = skip, default)",
     )
-    parser.add_argument("--deepseek-key", default="", help="DeepSeek API Key")
+    parser.add_argument("--deepseek-key", default="", help="DeepSeek API key")
     args = parser.parse_args()
 
-    # 1) 加载语义模型
-    print("正在加载语义模型 (all-MiniLM-L6-v2)...")
+    # 1) Load semantic model
+    print("Loading semantic model (all-MiniLM-L6-v2)...")
     model = get_semantic_model()
 
-    # 2) 加载技能与权重
+    # 2) Load skills and weights
     weights = SCORE_WEIGHTS
     if args.config and args.position:
         pos_config = load_skill_config(args.config)
@@ -60,28 +60,28 @@ def main():
             pos_data = pos_config[args.position]
             skills = pos_data.get("skills", DEFAULT_RESUME_SKILLS)
             if "skills" in pos_data:
-                print(f"已加载职位 '{args.position}' 的技能配置: {skills}")
+                print(f"Loaded skills for position '{args.position}': {skills}")
             if "weights" in pos_data:
                 weights = pos_data["weights"]
-                print(f"已加载职位 '{args.position}' 的权重配置: {weights}")
+                print(f"Loaded weights for position '{args.position}': {weights}")
         else:
             skills = auto_update_resume_skills(args.resume_pdf)
     else:
         skills = auto_update_resume_skills(args.resume_pdf)
     if args.config and not args.position:
-        print("WARNING: 指定了 --config 但未指定 --position，使用默认配置")
+        print("WARNING: --config specified without --position; using default config")
 
-    # 3) 简历向量
+    # 3) Encode resume into embedding vector
     resume_text = get_resume_text(args.resume_pdf)
     resume_embedding = None
     if model is not None and resume_text and len(resume_text.strip()) >= 20:
         resume_embedding = model.encode([resume_text[:8000]], normalize_embeddings=True)
-        print("简历向量已生成。")
+        print("Resume embedding ready.")
     else:
-        print("将仅使用关键词+标题打分（无语义分）。")
+        print("Semantic scoring unavailable; using keyword + title scoring only.")
 
-    # 4) 抓取
-    print("正在抓取职位 (hours_old=24)...")
+    # 4) Scrape jobs
+    print("Scraping jobs (hours_old=24)...")
     df = run_scrape(
         search_term=args.search,
         location=args.location,
@@ -89,12 +89,12 @@ def main():
         site_name=[s.strip() for s in args.sites.split(",") if s.strip()] or None,
     )
     if df.empty:
-        print("未抓到任何职位。")
+        print("No jobs found.")
         return
     if "site" in df.columns:
-        print("抓取结果按站点:", df["site"].value_counts().to_dict())
+        print("Results by site:", df["site"].value_counts().to_dict())
 
-    # 5) 打分 + 分类
+    # 5) Score and classify each job
     target_levels, rejection_reasons, match_scores = [], [], []
     for _, row in df.iterrows():
         level, reason = classify_job(row, skills)
@@ -113,7 +113,7 @@ def main():
     df["Rejection_Reason"] = rejection_reasons
     df["Match_Score"] = match_scores
 
-    # 6) 薪资
+    # 6) Extract salary range
     def _salary_range(row: pd.Series) -> str:
         lo, hi = row.get("min_amount"), row.get("max_amount")
         cur = str(row.get("currency") or "USD").strip()
@@ -136,7 +136,7 @@ def main():
         cols = [c for c in OUTPUT_COLUMNS if c in frame.columns]
         return frame[cols].copy()
 
-    # 7) 去重与分组
+    # 7) Deduplicate and group results
     kept = df[df["Target Level"].isin(["Perfect Match", "Possible", "Unlikely"])].copy()
     kept["location_score"] = kept["location"].map(
         lambda x: location_score(str(x) if pd.notna(x) else "")
@@ -159,28 +159,28 @@ def main():
         filtered = pd.concat([filtered, _keep_columns(dupes)], ignore_index=True)
     filtered = filtered.sort_values("Match_Score", ascending=False).reset_index(drop=True)
 
-    # 8) 写 Excel
+    # 8) Write Excel output
     out_path = Path(args.out)
     out_path.parent.mkdir(parents=True, exist_ok=True)
     with pd.ExcelWriter(out_path, engine="openpyxl") as writer:
         kept.to_excel(writer, sheet_name="Jobs", index=False)
         filtered.to_excel(writer, sheet_name="Filtered_Out", index=False)
 
-    print(f"已保留 {len(kept)} 条职位 → 工作表 'Jobs'（按 Match_Score 降序）")
-    print(f"已过滤 {len(filtered)} 条 → 工作表 'Filtered_Out'")
-    print(f"已写入: {out_path.absolute()}")
+    print(f"Kept {len(kept)} jobs → sheet 'Jobs' (sorted by Match_Score)")
+    print(f"Filtered {len(filtered)} jobs → sheet 'Filtered_Out'")
+    print(f"Written to: {out_path.absolute()}")
     if n_dupes > 0:
-        print(f"去重逻辑已将 {n_dupes} 个重复岗位移至 Filtered_Out 表格。")
+        print(f"Deduplication moved {n_dupes} duplicate posting(s) to Filtered_Out.")
 
     if args.csv:
         csv_path = out_path.with_suffix(".csv")
         kept.to_csv(csv_path, index=False, encoding="utf-8-sig")
-        print(f"CSV 已写入: {csv_path.absolute()}")
+        print(f"CSV written to: {csv_path.absolute()}")
 
-    # 9) ATS 分析（可选：对前 N 名调用 DeepSeek，较慢；跳过请用 --analyze-top 0）
+    # 9) Optional ATS analysis on top N jobs (slow — calls DeepSeek API)
     if args.analyze_top > 0 and kept.shape[0] > 0:
         n_analyze = min(args.analyze_top, len(kept))
-        print(f"正在对前 {n_analyze} 名职位做 ATS 分析（DeepSeek API，可能需数分钟）…")
+        print(f"Running ATS analysis on top {n_analyze} jobs (DeepSeek API, may take several minutes)…")
         try:
             from src.ats import run_ats_analysis
             report_path = run_ats_analysis(
@@ -191,12 +191,12 @@ def main():
                 output_path=str(out_path.parent / "ats_analysis_report.md"),
             )
             if report_path:
-                print(f"ATS 分析完成，报告: {report_path}")
+                print(f"ATS analysis complete. Report: {report_path}")
         except Exception as e:
-            print(f"WARNING: ATS 分析失败: {e}")
+            print(f"WARNING: ATS analysis failed: {e}")
 
     if not filtered.empty:
-        print("\n--- 拒绝理由统计 ---")
+        print("\n--- Rejection reason summary ---")
         for reason, cnt in filtered["Rejection_Reason"].value_counts().items():
             print(f"  [{cnt}] {reason}")
 
