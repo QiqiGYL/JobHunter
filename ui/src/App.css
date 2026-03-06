@@ -6,20 +6,36 @@
 
 .header {
   margin-bottom: 2rem;
-  text-align: center;
+  background: linear-gradient(135deg, #0a7c42 0%, #0d9e55 100%);
+  border-radius: 16px;
+  padding: 2rem 2rem 1.5rem;
+  color: #fff;
 }
 
-.header h1 {
-  margin: 0 0 0.25rem 0;
-  font-size: 2rem;
-  font-weight: 700;
-  letter-spacing: 0.02em;
+.header-hero {
+  text-align: center;
+  margin-bottom: 1.25rem;
+}
+
+.header-title {
+  margin: 0 0 0.4rem 0;
+  font-size: 2.2rem;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  color: #fff;
 }
 
 .subtitle {
-  margin: 0 0 1rem 0;
-  color: #666;
-  font-size: 0.9rem;
+  margin: 0;
+  color: rgba(255,255,255,0.82);
+  font-size: 0.92rem;
+  letter-spacing: 0.01em;
+}
+
+.header-resume {
+  background: rgba(255,255,255,0.12);
+  border-radius: 10px;
+  padding: 0.9rem 1.25rem;
 }
 
 .loading,

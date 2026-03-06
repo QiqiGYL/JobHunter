@@ -45,15 +45,36 @@ GRAD_FRIENDLY = re.compile(
 )
 
 ENTRY_LEVEL = re.compile(
-    r"\b(0\-?\s*2\s*years?|Entry\s+Level|Junior|No\s+experience|Graduate\s+role)\b",
+    r"\b(0\-?\s*2\s*years?|Entry\s+Level|Junior|Associate|No\s+experience|Graduate\s+role)\b",
     re.IGNORECASE,
 )
 
-# 标题明显与软件/开发无关（建筑、CAD 制图、估算等），排除
+# 标题明显与软件/开发无关，排除
 NON_SOFTWARE_TITLE = re.compile(
-    r"\b(Construction\s+Estimator|Estimator\s+-\s+Construction|CAD\s+Technician|"
-    r"Drafting\s+Technician|Civil\s+Engineer|Structural\s+Engineer|Mechanical\s+Engineer\s+-\s+HVAC|"
-    r"Electrical\s+Estimator|Project\s+Estimator|Quantity\s+Surveyor)\b",
+    r"\b("
+    # 建筑、土木、估算
+    r"Construction\s+Estimator|Estimator\s*-\s*Construction|CAD\s+Technician|"
+    r"Drafting\s+Technician|Civil\s+Engineer|Structural\s+Engineer|"
+    r"Mechanical\s+Engineer|Electrical\s+Engineer|Electrical\s+Estimator|"
+    r"Project\s+Estimator|Quantity\s+Surveyor|"
+    # 环境、地质、水文、自然科学
+    r"Hydrologist|Hydrogeologist|Geologist|Geophysicist|Geoscientist|"
+    r"Environmental\s+Scientist|Environmental\s+Engineer|Environmental\s+Technician|"
+    r"Environmental\s+Consultant|Ecologist|Biologist|Microbiologist|"
+    r"Chemist|Biochemist|Lab\s+Technician|Laboratory\s+Technician|"
+    r"Field\s+Technician|Soil\s+Scientist|"
+    # 医疗、护理
+    r"Nurse|Nursing|Pharmacist|Physician|Dentist|Physiotherapist|"
+    r"Occupational\s+Therapist|Radiologist|Veterinarian|"
+    # 会计、金融（非技术岗）
+    r"Accountant|Bookkeeper|Auditor|Tax\s+Specialist|Payroll\s+Specialist|"
+    # 市场、销售（非技术岗）
+    r"Sales\s+Representative|Account\s+Executive|Marketing\s+Coordinator|"
+    r"Social\s+Media\s+Manager|Copywriter|Graphic\s+Designer|"
+    # 其他明显非软件岗
+    r"Electrician|Plumber|HVAC\s+Technician|Welder|Machinist|"
+    r"Truck\s+Driver|Warehouse\s+Associate|Forklift\s+Operator"
+    r")\b",
     re.IGNORECASE,
 )
 

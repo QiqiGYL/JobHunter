@@ -25,7 +25,13 @@ DEFAULT_RESUME_SKILLS = [
 ]
 
 RESUME_FILENAME = "Grace_cs3.pdf"
-RESUME_PDF_PATH = os.environ.get("RESUME_PDF") or str(ROOT_DIR / RESUME_FILENAME)
+_UPLOADED_RESUME = DATA_DIR / "uploads" / "current_resume.pdf"
+_FALLBACK_RESUME = ROOT_DIR / RESUME_FILENAME
+# 优先用上传的简历，没有则用项目根目录的 Grace_cs3.pdf，也可用环境变量 RESUME_PDF 覆盖
+RESUME_PDF_PATH = (
+    os.environ.get("RESUME_PDF")
+    or (str(_UPLOADED_RESUME) if _UPLOADED_RESUME.is_file() else str(_FALLBACK_RESUME))
+)
 
 DEFAULT_TECH_KEYWORDS = {
     "编程语言": ["Python", "Java", "C++", "C#", "JavaScript", "TypeScript", "Go", "Rust"],

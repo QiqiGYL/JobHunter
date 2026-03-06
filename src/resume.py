@@ -79,7 +79,12 @@ def extract_keywords_from_resume(
     for category, keywords in keyword_dict.items():
         found_keywords[category] = {}
         for keyword in keywords:
-            pattern = re.compile(r"\b" + re.escape(keyword.lower()) + r"\b", re.IGNORECASE)
+            kw_escaped = re.escape(keyword.lower())
+            # 对含 . 或 / 的关键词（如 React.js、CI/CD）不加词边界，用简单子串匹配
+            if re.search(r'[./]', keyword):
+                pattern = re.compile(kw_escaped, re.IGNORECASE)
+            else:
+                pattern = re.compile(r"\b" + kw_escaped + r"\b", re.IGNORECASE)
             matches = len(pattern.findall(resume_text.lower()))
             if matches > 0:
                 found_keywords[category][keyword] = matches

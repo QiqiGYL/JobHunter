@@ -34,7 +34,7 @@ def main():
     )
     parser.add_argument("--search", default="Junior Software Engineer", help="搜索职位关键词")
     parser.add_argument("--location", default="Canada", help="工作地点")
-    parser.add_argument("--results", type=int, default=70, help="每个站点抓取数量")
+    parser.add_argument("--results", type=int, default=30, help="每个站点抓取数量")
     parser.add_argument("--sites", default="indeed,linkedin", help="站点，逗号分隔")
     parser.add_argument("--resume-pdf", default=RESUME_PDF_PATH, help="简历 PDF 路径")
     parser.add_argument("--out", default="data/job_hunt_results.xlsx", help="输出 Excel 路径")

@@ -16,9 +16,6 @@ export function ResumeUpload({ onUploaded }) {
     try {
       const res = await fetch(`${API}/resume/file`)
       if (!res.ok) {
-        // #region agent log
-        fetch('http://127.0.0.1:7570/ingest/9d152392-e621-4d1c-85bb-5369d73773fd', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '04911f' }, body: JSON.stringify({ sessionId: '04911f', location: 'ResumeUpload.jsx:openResumePdf 404', message: 'resume/file not ok', data: { status: res.status, ok: res.ok, url: res.url }, timestamp: Date.now(), hypothesisId: 'B' }) }).catch(() => { });
-        // #endregion
         setError('未找到简历文件')
         return
       }
@@ -36,12 +33,7 @@ export function ResumeUpload({ onUploaded }) {
   useEffect(() => {
     fetch(`${API}/resume/status`, { cache: 'no-store' })
       .then((res) => res.json().catch(() => ({})))
-      .then((data) => {
-        // #region agent log
-        fetch('http://127.0.0.1:7570/ingest/9d152392-e621-4d1c-85bb-5369d73773fd', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '04911f' }, body: JSON.stringify({ sessionId: '04911f', location: 'ResumeUpload.jsx:useEffect status', message: 'status response', data: { uploaded: !!data.uploaded }, timestamp: Date.now(), hypothesisId: 'D' }) }).catch(() => { });
-        // #endregion
-        setHasResume(!!data.uploaded)
-      })
+      .then((data) => setHasResume(!!data.uploaded))
       .catch(() => setHasResume(false))
   }, [])
 
@@ -82,30 +74,27 @@ export function ResumeUpload({ onUploaded }) {
 
   return (
     <div className="resume-upload">
-      {hasResume && (
-        <p className="resume-current">
-          当前简历:{' '}
+      <form onSubmit={handleSubmit} className="resume-form">
+        <input type="file" accept=".pdf" disabled={uploading} id="resume-file-input" className="resume-file-input" />
+        <label htmlFor="resume-file-input" className="resume-file-label">
+          Choose PDF
+        </label>
+        <button type="submit" className="resume-submit-btn" disabled={uploading}>
+          {uploading ? 'Uploading…' : 'Upload Resume'}
+        </button>
+        {hasResume && (
           <button
             type="button"
-            className="resume-current-link"
+            className="resume-view-btn"
             onClick={openResumePdf}
             disabled={openingPdf}
           >
-            {openingPdf ? '打开中…' : RESUME_FILENAME}
+            {openingPdf ? 'Opening…' : RESUME_FILENAME}
           </button>
-        </p>
-      )}
-      <form onSubmit={handleSubmit}>
-        <label className="resume-label">
-          <span>上传简历 (PDF)</span>
-          <input type="file" accept=".pdf" disabled={uploading} />
-        </label>
-        <button type="submit" disabled={uploading}>
-          {uploading ? '上传中…' : 'Upload resume'}
-        </button>
+        )}
       </form>
-      {message && <p className="resume-msg success">{message}</p>}
-      {error && <p className="resume-msg error">{error}</p>}
+      {message && <p className="resume-msg success">✓ Resume uploaded successfully</p>}
+      {error && <p className="resume-msg error">✗ {error}</p>}
     </div>
   )
 }

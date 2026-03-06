@@ -8,6 +8,12 @@ from __future__ import annotations
 import pandas as pd
 
 
+RESULTS_PER_SITE: dict[str, int] = {
+    "indeed": 100,
+    "linkedin": 30,
+}
+
+
 def run_scrape(
     search_term: str = "Software Engineer",
     location: str = "Canada",
@@ -15,21 +21,26 @@ def run_scrape(
     site_name: list[str] | None = None,
     country_indeed: str = "Canada",
 ) -> pd.DataFrame:
-    """按站点分别抓取后合并；某站失败（如 Indeed 断连）时保留其他站数据。hours_old=24，Indeed 用 country_indeed。"""
+    """按站点分别抓取后合并；某站失败（如 Indeed 断连）时保留其他站数据。
+    各站点数量由 RESULTS_PER_SITE 控制（indeed=100, linkedin=30），未配置的站点用 results_wanted。
+    LinkedIn 开启 linkedin_fetch_description 以获取完整 JD（较慢）。
+    """
     from jobspy import scrape_jobs
     if site_name is None:
         site_name = ["indeed", "linkedin"]
     frames = []
     for site in site_name:
-        print(f"正在抓取 {site}（最多 {results_wanted} 条）… 若久无输出属正常，请勿 kill。")
+        n = RESULTS_PER_SITE.get(site, results_wanted)
+        print(f"正在抓取 {site}（最多 {n} 条）… 若久无输出属正常，请勿 kill。")
         try:
             df = scrape_jobs(
                 site_name=[site],
                 search_term=search_term,
                 location=location,
-                results_wanted=results_wanted,
+                results_wanted=n,
                 hours_old=24,
                 country_indeed=country_indeed,
+                linkedin_fetch_description=True,
             )
             if df is not None and not df.empty:
                 frames.append(df)

@@ -100,9 +100,13 @@ export default function App() {
   return (
     <div className="app">
       <header className="header">
-        <h1>JobHunter</h1>
-        <p className="subtitle">职位列表按 Match Score 排序 · 数据来自 job_hunt_results.xlsx</p>
-        <ResumeUpload onUploaded={handleResumeUploaded} />
+        <div className="header-hero">
+          <h1 className="header-title">JobHunter</h1>
+          <p className="subtitle">Job matching in the last 24h· ranked by resume match score</p>
+        </div>
+        <div className="header-resume">
+          <ResumeUpload onUploaded={handleResumeUploaded} />
+        </div>
       </header>
 
       {loading && <div className="loading">加载中…</div>}
