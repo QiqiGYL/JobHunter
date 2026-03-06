@@ -22,7 +22,7 @@
 
 > **维护说明**：每次做功能改进或重要修改时，在本节**顶部**新增一条，格式：`日期 | 简短描述`，下面可跟 1～3 行补充。
 
-- **2026-03-05**  
+- **2026-03-07**  
   - Scraping: LinkedIn now fetches full description (`linkedin_fetch_description=True`); per-site result counts via `RESULTS_PER_SITE` (indeed=100, linkedin=30); default `--results` lowered to 30.  
   - Scoring: `tech_keywords.yaml` expanded from 77 to 160+ keywords (frontend, backend, cloud/DevOps, AI/ML, tools); fixed React.js / CI/CD matching in `resume.py` for keywords containing `.` or `/`.  
   - Filters: `Associate` added to `ENTRY_LEVEL` (fixes TD Associate SWE being filtered out); `Mechanical Engineer` and `Electrical Engineer` added to `NON_SOFTWARE_TITLE`; expanded non-software exclusions (environmental, medical, accounting, trades, etc.).  
@@ -53,8 +53,27 @@
   - 新增 `progress.md`：记录每次功能改进与日期，便于回顾开发历程。
 
 - **2026-02-09**  
-  - hunt.py：四路评分（语义 + 关键词 + 标题 + 位置）、job_positions.yaml 与 --config/--position、关键词阈值与分数调整、标题关键词扩展（Entry-Level / Early-Career / Graduate）。  
-  - 见 CHANGELOG.md、IMPROVEMENTS.md。
+  - 评分系统升级：3-component → 4-component，具体权重对比如下：
 
-- **（更早）**  
-  - 项目初始化：职位抓取与打分、简历解析、ATS 分析脚本、Flask API、React 前端、简历上传与单职位 Analysis 抽屉等。
+    | 组件 | 旧权重（3-component） | 新权重（4-component） | 变化 |
+    |------|----------------------|----------------------|------|
+    | 语义相似度 | 60% | 40% | ↓ 20% |
+    | 关键词匹配 | 30% | 35% | ↑ 5% |
+    | 标题加分 | 10% | 15% | ↑ 5% |
+    | 位置加分 | — | 10% | ✨ 新增 |
+
+  - 关键词匹配：阈值从 80% 降到 75%，分值从 20 → 25，更容易命中。  
+  - 标题关键词扩展：新增 "Entry-Level"、"Early-Career"、"Graduate"。  
+  - 新增位置加分：Toronto/Mississauga +10，Ontario +5。  
+  - 新增 `job_positions.yaml` 配置文件，支持 `--config` / `--position` 切换 backend / frontend / data 等预设。  
+  - 新函数：`_load_config_file()`、`_location_bonus()`、`load_skill_config()`。  
+  - 新增文档：`IMPROVEMENTS.md`（改进说明）、`QUICK_REFERENCE.sh`（常用命令参考）。  
+  - 版本标记：v2（四路评分 + 配置支持）。
+
+- **（更早 · 项目初始化）**  
+  - 用 `jobspy` 抓取 Indeed / LinkedIn 职位，输出 `job_hunt_results.xlsx`。  
+  - 用 `sentence-transformers`（all-MiniLM-L6-v2）做语义相似度打分，`rapidfuzz` 做关键词模糊匹配。  
+  - 用 `pdfplumber` 解析简历 PDF，提取技能关键词（`analyze_resume.py`）。  
+  - `deepseek_ats_analyzer.py`：调用 DeepSeek API 对单职位做 ATS 深度分析，输出结构化报告。  
+  - `api/app.py`（Flask）：`/api/jobs`、`/api/resume`、`/api/jobs/analyze`、简历 PDF 预览接口。  
+  - `ui/`（React + Vite + Ant Design）：职位列表、分页、简历上传与预览、单职位 Analysis 抽屉。
