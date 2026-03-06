@@ -22,6 +22,12 @@
 
 > **维护说明**：每次做功能改进或重要修改时，在本节**顶部**新增一条，格式：`日期 | 简短描述`，下面可跟 1～3 行补充。
 
+- **2026-03-07**（续）
+  - 清理仓库：删除 `CHANGELOG.md`、`IMPROVEMENTS.md`、`.github/copilot-instructions.md`；`.gitignore` 补充 `.cursor/` 和 `data/` 生成文件。
+  - 全部 Python 源码注释和 docstring 改为英文（`src/`、`api/app.py`、`hunt.py`）。
+  - UI：新增中英文切换按钮（右上角固定，`[EN|CN]` 分段样式）；DeepSeek key 未设置时 Analysis 按钮显示友好提示而非原始报错。
+  - 新增 `progress_en.md`（英文版进度日志）；`README.md` 改写为英文，新增 `README_CN.md`。
+
 - **2026-03-07**  
   - Scraping: LinkedIn now fetches full description (`linkedin_fetch_description=True`); per-site result counts via `RESULTS_PER_SITE` (indeed=100, linkedin=30); default `--results` lowered to 30.  
   - Scoring: `tech_keywords.yaml` expanded from 77 to 160+ keywords (frontend, backend, cloud/DevOps, AI/ML, tools); fixed React.js / CI/CD matching in `resume.py` for keywords containing `.` or `/`.  
