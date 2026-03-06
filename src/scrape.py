@@ -43,6 +43,8 @@ def run_scrape(
                 results_wanted=n,
                 hours_old=24,
                 country_indeed=country_indeed,
+                ###Important:
+                #####Turn it off when debuging or linkedin results > 30####
                 linkedin_fetch_description=True,
             )
             if df is not None and not df.empty:
