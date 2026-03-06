@@ -21,14 +21,17 @@ A chronological log of features and changes, so I can look back and see what was
 ## II. Changelog (newest first)
 
 - **2026-03-07**
-  - Cleaned up repo: removed `CHANGELOG.md`, `IMPROVEMENTS.md`, `.github/copilot-instructions.md`; updated `.gitignore` to exclude `.cursor/` and generated `data/` files.
+  - Cleaned up repo: removed `CHANGELOG.md`, `IMPROVEMENTS.md`, `.github/copilot-instructions.md`; updated `.gitignore` to exclude generated `data/` files.
   - Translated all code comments and docstrings to English across `src/`, `api/app.py`, and `hunt.py`.
   - UI: bilingual EN/CN toggle button (fixed top-right corner, segmented `[EN|CN]` style); graceful "no API key" message when DeepSeek key is missing instead of a raw error.
   - Added `README_CN.md` (Chinese version) and rewrote `README.md` in English.
 
 - **2026-03-07** (earlier)
-  - Git: committed all Mar 5 changes; updated progress log.
-  - Progress log updated with full historical summary.
+  - Scraping: LinkedIn now fetches full description (`linkedin_fetch_description=True`); per-site result counts via `RESULTS_PER_SITE` (indeed=100, linkedin=30); default `--results` lowered to 30.  
+  - Scoring: `tech_keywords.yaml` expanded from 77 to 160+ keywords (frontend, backend, cloud/DevOps, AI/ML, tools); fixed React.js / CI/CD matching in `resume.py` for keywords containing `.` or `/`.  
+  - Filters: `Associate` added to `ENTRY_LEVEL` (fixes TD Associate SWE being filtered out); `Mechanical Engineer` and `Electrical Engineer` added to `NON_SOFTWARE_TITLE`; expanded non-software exclusions (environmental, medical, accounting, trades, etc.).  
+  - Config: resume auto-selects uploaded PDF (`data/uploads/current_resume.pdf`) over fallback `Grace_cs3.pdf`.  
+  - UI: header redesigned with green gradient + resume upload bar; removed emojis from title/buttons; job card score circle fixed to right side with consistent vertical alignment; source badge (indeed/linkedin) and Remote badge added to each card.
 
 - **2026-03-05**
   - Scraping: LinkedIn now fetches full descriptions (`linkedin_fetch_description=True`); per-site result counts via `RESULTS_PER_SITE` (indeed=100, linkedin=30); default `--results` lowered to 30.
@@ -47,6 +50,14 @@ A chronological log of features and changes, so I can look back and see what was
 
 - **2026-03-01**
   - Scraping robustness: `run_scrape` now iterates sites individually; a `RemoteDisconnected` / `ConnectionError` on one site logs a WARNING and skips that site rather than crashing the whole run.
+
+- **2026-02-2?**
+  - Don't rememeber when did I do this
+  - Scraping: `added country_indeed='Canada'` to  `run_scrape` so Indeed returns Canadian jobs; prints `df["site"].value_counts()` after scraping to help debug whether Indeed results are being deduplicated away.
+
+- **2026-02-26**
+  - Saved current progress to git.
+  - Next steps: (1) LinkedIn has no description — add `linkedin_fetch_description=True` to `scrape_jobs` call in `src/scrape.py`; (2) Indeed jobs not appearing in xlsx — investigate deduplication logic (keep only one per company+title) and whether `country_indeed` needs to be passed.
 
 - **2026-02-26**
   - ATS result persistence: cache written to `data/ats_analysis_cache.json`; cache key prefers `job_url` hash, falls back to title+company+description hash; analyze endpoint checks cache first and returns `cached: true` on hit.

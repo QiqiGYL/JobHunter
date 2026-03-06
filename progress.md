@@ -2,6 +2,8 @@
 
 记录从项目开始到现在的功能与改动，便于回顾「哪天做了什么」。
 
+PS: 更早记录的IMPROVEMENTS.md，CHANGELOG.md跟KEYWORD_ANALYSIS_GUIDE.md都放在JobHunter_old文件夹里了
+
 ---
 
 ## 一、进度总览（按模块）
@@ -23,17 +25,17 @@
 > **维护说明**：每次做功能改进或重要修改时，在本节**顶部**新增一条，格式：`日期 | 简短描述`，下面可跟 1～3 行补充。
 
 - **2026-03-07**（续）
-  - 清理仓库：删除 `CHANGELOG.md`、`IMPROVEMENTS.md`、`.github/copilot-instructions.md`；`.gitignore` 补充 `.cursor/` 和 `data/` 生成文件。
+  - 清理仓库：删除 `CHANGELOG.md`、`IMPROVEMENTS.md`、`.github/copilot-instructions.md`；`.gitignore` 补充 `data/` 生成文件。
   - 全部 Python 源码注释和 docstring 改为英文（`src/`、`api/app.py`、`hunt.py`）。
   - UI：新增中英文切换按钮（右上角固定，`[EN|CN]` 分段样式）；DeepSeek key 未设置时 Analysis 按钮显示友好提示而非原始报错。
   - 新增 `progress_en.md`（英文版进度日志）；`README.md` 改写为英文，新增 `README_CN.md`。
 
 - **2026-03-07**  
-  - Scraping: LinkedIn now fetches full description (`linkedin_fetch_description=True`); per-site result counts via `RESULTS_PER_SITE` (indeed=100, linkedin=30); default `--results` lowered to 30.  
-  - Scoring: `tech_keywords.yaml` expanded from 77 to 160+ keywords (frontend, backend, cloud/DevOps, AI/ML, tools); fixed React.js / CI/CD matching in `resume.py` for keywords containing `.` or `/`.  
-  - Filters: `Associate` added to `ENTRY_LEVEL` (fixes TD Associate SWE being filtered out); `Mechanical Engineer` and `Electrical Engineer` added to `NON_SOFTWARE_TITLE`; expanded non-software exclusions (environmental, medical, accounting, trades, etc.).  
-  - Config: resume auto-selects uploaded PDF (`data/uploads/current_resume.pdf`) over fallback `Grace_cs3.pdf`.  
-  - UI: header redesigned with green gradient + resume upload bar; removed emojis from title/buttons; job card score circle fixed to right side with consistent vertical alignment; source badge (indeed/linkedin) and Remote badge added to each card.
+  - 抓取：LinkedIn 现在抓取完整职位描述（`linkedin_fetch_description=True`）；通过 `RESULTS_PER_SITE` 控制各站点数量（indeed=100, linkedin=30）；`--results` 默认值降为 30。 
+  - 打分：`tech_keywords.yaml` 从 77 个关键词扩展到 160+ 个（前端、后端、云/DevOps、AI/ML、工具）；修复 `resume.py` 中含 `.` 或 `/` 的关键词（如 React.js、CI/CD）匹配问题。
+  - 过滤：`Associate` 加入 `ENTRY_LEVEL`（修复 TD Associate SWE 被误筛的问题）；`Mechanical Engineer` 和 `Electrical Engineer` 加入 `NON_SOFTWARE_TITLE`；扩展非软件岗排除范围（环境、医疗、会计、体力劳动等）。 
+  - 配置：简历自动优先选择上传的 PDF（`data/uploads/current_resume.pdf`），没有则用 `Grace_cs3.pdf`。
+  - 前端：header 改为绿色渐变设计并加入简历上传栏；删除标题和按钮中的 emoji；Match Score 圆圈固定在右侧且垂直对齐；每个职位卡片新增来源徽章（indeed/linkedin）和 Remote 徽章。
 
 - **2026-03-04**（续）  
   - 前端：JobCard 新增来源徽章（indeed / linkedin 等绿色小标签）和 Remote 蓝色小标签；`hunt.py` 的 OUTPUT_COLUMNS 加入 `site` 字段，下次抓取后 xlsx 里会有来源列。
@@ -48,6 +50,7 @@
   - 抓取容错：`run_scrape` 改为按站点逐个调用 jobspy 再合并；某站（如 Indeed）出现 `RemoteDisconnected`/ConnectionError 时只打 WARNING 并跳过该站，其余站点结果照常返回，避免整次抓取崩溃。
 
 - **2026-02-2?**  
+  - 不记得做的时间了
   - 抓取：`run_scrape` 增加 `country_indeed='Canada'` 传给 jobspy，便于 Indeed 返回加拿大职位；抓取后在 hunt 中打印各站点数量 `df["site"].value_counts()` 便于排查 Indeed 是否被去重掉。
 
 - **2026-02-26**  
