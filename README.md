@@ -110,6 +110,10 @@ Open **http://localhost:5173** in your browser.
 ### 5. Scrape and score jobs
 
 ```bash
+# Simplest — uses all defaults (Junior Software Engineer, Canada, 30 results/site)
+python hunt.py
+
+# Or specify your own search
 python hunt.py --search "Software Engineer" --location "Canada"
 ```
 
@@ -122,13 +126,21 @@ Results are written to `data/job_hunt_results.xlsx`. Refresh the UI to see them.
 ### `hunt.py` options
 
 ```bash
+# Use all defaults (recommended for first run)
+python hunt.py
+
+# Custom search
 python hunt.py --search "Junior Software Engineer" --location "Canada"
 
 # Common flags
 --results 30          # Results per site (default: 30)
 --analyze-top 10      # Run ATS analysis on top N jobs after scraping (default: 0)
 --resume-pdf path     # Override resume path
---config config/job_positions.yaml --position backend  # Use a preset skill profile
+
+# Use a preset skill profile from config/job_positions.yaml
+--config config/job_positions.yaml --position backend    # Java, Python, SQL, Spring, Docker
+--config config/job_positions.yaml --position frontend   # JavaScript, React, TypeScript, CSS
+--config config/job_positions.yaml --position data       # Python, SQL, ML, Pandas, Statistics
 ```
 
 ### API endpoints

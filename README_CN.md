@@ -110,6 +110,10 @@ npm run dev
 ### 5. 抓取并打分
 
 ```bash
+# 最简单的方式 — 使用所有默认参数（Junior Software Engineer，Canada，每站点 30 条）
+python hunt.py
+
+# 或者自定义搜索
 python hunt.py --search "Software Engineer" --location "Canada"
 ```
 
@@ -122,12 +126,21 @@ python hunt.py --search "Software Engineer" --location "Canada"
 ### `hunt.py` 常用参数
 
 ```bash
+# 使用所有默认参数（推荐第一次运行时使用）
+python hunt.py
+
+# 自定义搜索
 python hunt.py --search "Junior Software Engineer" --location "Canada"
 
+# 常用参数
 --results 30              # 每个站点抓取数量（默认 30）
 --analyze-top 10          # 抓取后对前 N 名做 ATS 分析（默认 0，不分析）
 --resume-pdf 路径          # 手动指定简历路径
---config config/job_positions.yaml --position backend  # 使用预设技能配置
+
+# 使用 config/job_positions.yaml 中的预设技能配置
+--config config/job_positions.yaml --position backend    # Java, Python, SQL, Spring, Docker
+--config config/job_positions.yaml --position frontend   # JavaScript, React, TypeScript, CSS
+--config config/job_positions.yaml --position data       # Python, SQL, ML, Pandas, Statistics
 ```
 
 ### API 端点
