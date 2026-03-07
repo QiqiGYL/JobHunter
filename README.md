@@ -6,6 +6,10 @@ JobHunter pulls job postings from Indeed and LinkedIn, scores each one against y
 
 ---
 
+![JobHunter UI](assets/ui-screenshot.png)
+
+---
+
 ## Features
 
 - **Multi-source scraping** — Indeed (up to 100 results) and LinkedIn (up to 30) via `jobspy`, with per-site error handling so one site failing won't crash the run
