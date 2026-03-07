@@ -24,6 +24,10 @@ PS: 更早记录的IMPROVEMENTS.md，CHANGELOG.md跟KEYWORD_ANALYSIS_GUIDE.md都
 
 > **维护说明**：每次做功能改进或重要修改时，在本节**顶部**新增一条，格式：`日期 | 简短描述`，下面可跟 1～3 行补充。
 
+- **2026-02-14**
+  - UI：简历上传区域改进——选择文件后在 `Choose PDF` 旁显示文件名标签（含 × 取消按钮），可随时清除选择；上传成功/失败/错误提示均随界面语言切换（中英文）。
+  - 修复：英文界面下"未选择文件"等错误提示之前仍显示中文，现已全部翻译。
+
 - **2026-03-07**（续）
   - 清理仓库：删除 `CHANGELOG.md`、`IMPROVEMENTS.md`、`.github/copilot-instructions.md`；`.gitignore` 补充 `data/` 生成文件。
   - 全部 Python 源码注释和 docstring 改为英文（`src/`、`api/app.py`、`hunt.py`）。

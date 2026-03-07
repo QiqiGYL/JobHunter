@@ -166,7 +166,7 @@ export default function App() {
           <p className="subtitle">{t.subtitle}</p>
         </div>
         <div className="header-resume">
-          <ResumeUpload onUploaded={handleResumeUploaded} />
+          <ResumeUpload onUploaded={handleResumeUploaded} lang={lang} />
         </div>
       </header>
 

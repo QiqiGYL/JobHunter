@@ -20,6 +20,10 @@ A chronological log of features and changes, so I can look back and see what was
 
 ## II. Changelog (newest first)
 
+- **2026-02-14**
+  - UI: improved resume upload area — after choosing a file, a filename tag (with a × dismiss button) appears next to "Choose PDF" so users can see and cancel their selection at any time.
+  - Fix: error messages in `ResumeUpload` (e.g. "please select a PDF") were still hardcoded in Chinese even in the English UI; all strings are now bilingual and follow the active language toggle.
+
 - **2026-03-07**
   - Cleaned up repo: removed `CHANGELOG.md`, `IMPROVEMENTS.md`, `.github/copilot-instructions.md`; updated `.gitignore` to exclude generated `data/` files.
   - Translated all code comments and docstrings to English across `src/`, `api/app.py`, and `hunt.py`.
