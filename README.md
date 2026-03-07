@@ -90,27 +90,27 @@ DEEPSEEK_API_KEY=your_key_here
 
 The app runs fine without this — ATS analysis buttons in the UI will be unavailable until a key is set.
 
-### 3. Start the backend
+### 3. Start the backend *(Terminal 1)*
 
 ```bash
 python api/app.py
 ```
 
-Runs on `http://localhost:5000`.
+Runs on `http://localhost:5000`. Keep this terminal running.
 
-### 4. Start the frontend
+### 4. Start the frontend *(Terminal 2)*
 
 ```bash
 cd ui
 npm run dev
 ```
 
-Open **http://localhost:5173** in your browser.
+Open **http://localhost:5173** in your browser. Keep this terminal running.
 
-### 5. Scrape and score jobs
+### 5. Scrape and score jobs *(Terminal 3)*
 
 ```bash
-# Simplest — uses all defaults (Junior Software Engineer, Canada, 30 results/site)
+# Simplest — uses all defaults (Junior Software Engineer, Canada)
 python hunt.py
 
 # Or specify your own search

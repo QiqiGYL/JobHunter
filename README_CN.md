@@ -90,24 +90,24 @@ DEEPSEEK_API_KEY=你的密钥
 
 不配置也可以正常运行，只是网页上的 ATS Analysis 按钮不可用。
 
-### 3. 启动后端
+### 3. 启动后端 *（终端 1）*
 
 ```bash
 python api/app.py
 ```
 
-默认运行在 `http://localhost:5000`。
+默认运行在 `http://localhost:5000`，保持该终端运行。
 
-### 4. 启动前端
+### 4. 启动前端 *（终端 2）*
 
 ```bash
 cd ui
 npm run dev
 ```
 
-浏览器打开 **http://localhost:5173**。
+浏览器打开 **http://localhost:5173**，保持该终端运行。
 
-### 5. 抓取并打分
+### 5. 抓取并打分 *（终端 3）*
 
 ```bash
 # 最简单的方式 — 使用所有默认参数（Junior Software Engineer，Canada，每站点 30 条）

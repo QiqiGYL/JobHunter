@@ -24,7 +24,7 @@ DEFAULT_RESUME_SKILLS = [
     "MySQL", "MongoDB", "MariaDB", "Redis", "GitHub", "R",
 ]
 
-RESUME_FILENAME = "Grace_cs3.pdf"
+RESUME_FILENAME = "default_resume.pdf"
 _UPLOADED_RESUME = DATA_DIR / "uploads" / "current_resume.pdf"
 _FALLBACK_RESUME = ROOT_DIR / RESUME_FILENAME
 
