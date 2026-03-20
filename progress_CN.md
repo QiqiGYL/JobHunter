@@ -23,6 +23,14 @@ PS: 更早记录的IMPROVEMENTS.md，CHANGELOG.md跟KEYWORD_ANALYSIS_GUIDE.md都
 ## 二、按时间记录（新在上）
 
 > **维护说明**：每次做功能改进或重要修改时，在本节**顶部**新增一条，格式：`日期 | 简短描述`，下面可跟 1～3 行补充。
+- **2026-03-20**
+  - v1.0 落地：把职位数据持久化从 CSV 输出迁移到 SQLite 作为单一数据源，补充 `status`（new/applied/ignored）和 `applied_at`。
+  - UI：增强 `filter bar` 匹配灵活度（含 debounce 等），并新增 Applied tab 用于管理/统计已投递工作量。
+- **2026-03-15**
+  - 架构：引入 SQLite 作为职位单一数据源，新增 `status`（new/applied/ignored）与 `applied_at`；upsert 逻辑保留状态并支持“90 天内同公司+同职位名视为已投递”去重。
+  - 后端/抓取：新增 `POST /api/jobs/refresh` 触发抓取写入 DB；`/api/jobs` 增加 Applied tab 返回与计数；失败时前端能展示更详细的 hunt.py 输出/报错尾部。
+  - 前端 UI：加入“地区（Canada / United States）”筛选与 Applied（N）tab；每个 JobCard 支持“标记为已投递”；Job type 改为多选可滚动下拉；筛选输入加防抖；可在 Run 时选择先 Refresh 再筛选，并在 UI 展示 LinkedIn/Indeed 抓取与去重统计。
+
 
 - **2026-03-07**（续）
   - UI：简历上传区域改进——选择文件后在 `Choose PDF` 旁显示文件名标签（含 × 取消按钮），可随时清除选择；上传成功/失败/错误提示均随界面语言切换（中英文）。

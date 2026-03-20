@@ -90,9 +90,15 @@
 .error {
   color: #c00;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
   gap: 0.75rem;
+}
+
+.error-message {
+  white-space: pre-wrap;
+  text-align: left;
+  max-width: 60ch;
 }
 
 .error button {
@@ -141,6 +147,203 @@
 .tabs button.active {
   color: #0a7c42;
   border-bottom-color: #0a7c42;
+}
+
+.filter-bar-wrap {
+  margin-bottom: 1rem;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  background: #fafafa;
+  overflow: visible;
+}
+
+.filter-bar-toggle {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #333;
+  background: #f0f0f0;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+}
+
+.filter-bar-toggle:hover {
+  background: #e8e8e8;
+}
+
+.filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1rem;
+  padding: 0.75rem 1rem;
+  border-top: 1px solid #e0e0e0;
+}
+
+.filter-bar-label {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: #555;
+}
+
+.filter-input {
+  font-size: 0.9rem;
+  padding: 0.35rem 0.5rem;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+}
+
+.filter-input-num {
+  width: 4rem;
+}
+
+.filter-select {
+  min-width: 8rem;
+}
+
+.filter-multiselect-wrap {
+  position: relative;
+  display: inline-block;
+}
+
+.filter-multiselect-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  min-width: 10rem;
+  text-align: left;
+  cursor: pointer;
+  background: #fff;
+}
+
+.filter-multiselect-arrow {
+  font-size: 0.7rem;
+  color: #666;
+}
+
+.filter-multiselect-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: 2px;
+  min-width: 100%;
+  max-height: 10rem;
+  overflow-y: scroll;
+  overflow-x: hidden;
+  scrollbar-gutter: stable;
+  background: #fff;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  z-index: 100;
+  padding: 0.25rem 0;
+}
+
+.filter-multiselect-option {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.75rem;
+  font-size: 0.88rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.filter-multiselect-option:hover {
+  background: #f0f0f0;
+}
+
+.filter-multiselect-option input {
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.filter-multiselect-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 99;
+}
+
+.filter-bar-sep {
+  color: #888;
+  font-weight: 500;
+}
+
+.filter-bar-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.88rem;
+  color: #333;
+  cursor: pointer;
+}
+
+.filter-bar-check input {
+  cursor: pointer;
+}
+
+.filter-actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.filter-actions-sep {
+  color: #bbb;
+  font-weight: 400;
+  user-select: none;
+}
+
+.filter-reset-btn,
+.filter-run-btn {
+  padding: 0.35rem 0.75rem;
+  font-size: 0.85rem;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.filter-reset-btn {
+  color: #0a7c42;
+  background: transparent;
+  border: 1px solid #0a7c42;
+}
+
+.filter-reset-btn:hover {
+  background: #e8f5ee;
+}
+
+.filter-run-btn {
+  color: #fff;
+  background: #0a7c42;
+  border: 1px solid #0a7c42;
+}
+
+.filter-run-btn:hover {
+  background: #086834;
+}
+
+.scrape-stats {
+  margin: 0.5rem 0 1rem 0;
+  font-size: 0.85rem;
+  color: #555;
+}
+
+.scrape-stats-hint {
+  color: #888;
+  font-style: italic;
+}
+
+.filter-hint {
+  width: 100%;
+  margin: 0.25rem 0 0 0;
+  font-size: 0.8rem;
+  color: #666;
+  flex-basis: 100%;
+  order: 10;
 }
 
 .pagination {

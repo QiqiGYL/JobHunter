@@ -13,3 +13,5 @@ python-dotenv>=1.0
 # api/app.py
 flask>=3.0
 flask-cors>=4.0
+# db (src/db.py)
+sqlalchemy>=2.0

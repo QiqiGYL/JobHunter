@@ -153,12 +153,15 @@ def run_ats_analysis(
 
     try:
         df = pd.read_excel(excel_path, sheet_name="Jobs")
-    except Exception as e:
-        print(f"WARNING: Failed to read Excel: {e}")
-        return ""
+    except Exception:
+        try:
+            df = pd.read_excel(excel_path, sheet_name="All")
+        except Exception as e:
+            print(f"WARNING: Failed to read Excel (Jobs or All): {e}")
+            return ""
 
     if df.empty:
-        print("WARNING: Jobs sheet is empty, skipping ATS analysis")
+        print("WARNING: Jobs/All sheet is empty, skipping ATS analysis")
         return ""
 
     if "Match_Score" in df.columns:

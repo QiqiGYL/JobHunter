@@ -1,13 +1,44 @@
 # -*- coding: utf-8 -*-
 """
 Job filtering rules: experience level, intern/co-op, graduation year, non-software roles.
+Supports optional FilterOptions for dynamic rules from the frontend.
 """
 
 from __future__ import annotations
 
 import re
+from dataclasses import dataclass, field
+from typing import Optional
 
 import pandas as pd
+
+
+# Role IDs for job type filter (frontend sends these; we match title/description against keywords)
+JOB_ROLE_KEYWORDS: dict[str, list[str]] = {
+    "software_developer": [
+        "software developer", "software engineer", "developer", "full stack", "fullstack",
+        "backend", "frontend", "front-end", "back-end", "application developer",
+    ],
+    "quality_assurance": [
+        "quality assurance", "qa engineer", "test engineer", "testing", "sdet",
+        "quality engineer", "automation engineer",
+    ],
+    "data_analyst": [
+        "data analyst", "data scientist", "data analytics", "business intelligence",
+        "bi analyst", "analytics engineer",
+    ],
+}
+
+
+@dataclass
+class FilterOptions:
+    """Dynamic filter settings from the frontend (API only; hunt.py uses defaults via None)."""
+    years_min: int = 0
+    years_max: int = 2
+    graduation_year: Optional[int] = None  # None = any (new grad & non-new grad)
+    exclude_intern_coop: bool = True
+    job_roles: list[str] = field(default_factory=list)  # empty = any role; else e.g. ["software_developer", "data_analyst"]
+    location_country: Optional[str] = None  # "Canada" | "United States" | None = any
 
 # Intern / Co-op / Student — checked against title only to avoid
 # false positives like "preferred co-op experience" in description
@@ -29,9 +60,33 @@ SENIOR_LEVEL_IN_TITLE = re.compile(
     re.IGNORECASE,
 )
 
-# Requires 2026 graduation (user graduates June 2025)
+# Requires 2026 graduation (user graduates June 2025) — used when filter_options is None
 EXCLUDE_2026_GRAD = re.compile(
     r"\b(Class\s+of\s+2026|2026\s+Grad(uate)?|Graduation\s+(by\s+)?2026|December\s+2025\s+Grad)\b",
+    re.IGNORECASE,
+)
+
+# Capture graduation year in context for dynamic filtering (only unambiguous degree/graduation phrasing).
+# Avoid matching company history like "Since 1965" by not using a generic "any word + year" pattern.
+GRAD_YEAR_PREFIX = re.compile(
+    r"\b(?:Class\s+of|Graduation\s+(?:by\s+)?|Graduate\s+(?:by\s+)?|"
+    r"(?:January|February|March|April|May|June|July|August|September|October|November|December)\s+)"
+    r"\s*(\d{4})\s*(?:Grad|Graduate|Graduation)?\b",
+    re.IGNORECASE,
+)
+GRAD_YEAR_SUFFIX = re.compile(
+    r"\b(\d{4})\s*(?:Grad|Graduate|Graduation)\b",
+    re.IGNORECASE,
+)
+# Degree/graduation year range: "degree ... between September 2025 to September 2026" -> capture 2025, 2026
+GRAD_YEAR_RANGE = re.compile(
+    r"(?:degree|graduat|bachelor).{0,80}?\b(\d{4})\s*(?:to|and|-)\s*(?:\w+\s+)?(\d{4})\b",
+    re.IGNORECASE | re.DOTALL,
+)
+
+# Experience range: "X+ years", "X-Y years", "X years" to extract minimum required years
+REQUIRED_YEARS_PATTERN = re.compile(
+    r"\b(\d+)\s*\+\s*years?\b|\b(\d+)\s*-\s*\d+\s*years?\b|\b(\d+)\s+years?\s+experience\b",
     re.IGNORECASE,
 )
 
@@ -80,20 +135,90 @@ NON_SOFTWARE_TITLE = re.compile(
 )
 
 
-def classify_job(row: pd.Series, skills: list[str]) -> tuple[str, str]:
-    """Return (target_level, rejection_reason) for a job row."""
+def _parse_required_years(text: str) -> Optional[int]:
+    """Return the minimum years of experience explicitly required in text, or None.
+    E.g. '3+ years' -> 3, '1-2 years' -> 1, '5 years experience' -> 5.
+    If multiple matches, returns the maximum (strictest requirement).
+    """
+    if not text:
+        return None
+    found = []
+    for m in REQUIRED_YEARS_PATTERN.finditer(text):
+        # Group 1: X+ years, Group 2: X-Y years, Group 3: X years experience
+        val = m.group(1) or m.group(2) or m.group(3)
+        if val:
+            found.append(int(val))
+    return max(found) if found else None
+
+
+def _grad_years_mentioned(text: str) -> list[int]:
+    """Return list of 4-digit years mentioned in graduation/degree context.
+    Includes: Class of YYYY, YYYY Grad, Month YYYY Grad, and degree ranges (e.g. between 2025 to 2026).
+    Excludes: generic phrases like 'Since 1965' (company history).
+    """
+    if not text:
+        return []
+    years = []
+    for m in GRAD_YEAR_PREFIX.finditer(text):
+        if m.group(1):
+            years.append(int(m.group(1)))
+    for m in GRAD_YEAR_SUFFIX.finditer(text):
+        if m.group(1):
+            years.append(int(m.group(1)))
+    for m in GRAD_YEAR_RANGE.finditer(text):
+        y1, y2 = m.group(1), m.group(2)
+        if y1:
+            years.append(int(y1))
+        if y2:
+            years.append(int(y2))
+    return years
+
+
+def classify_job(
+    row: pd.Series,
+    skills: list[str],
+    filter_options: Optional[FilterOptions] = None,
+) -> tuple[str, str]:
+    """Return (target_level, rejection_reason) for a job row.
+    When filter_options is None, uses hardcoded rules (hunt.py). When provided, uses dynamic rules (API).
+    """
     title = str(row.get("title") or "")
     desc = str(row.get("description") or "")
     combined = f"{title} {desc}"
 
-    if EXCLUDE_TITLE_DESC.search(title):
-        return "Too Senior", "Exclude: Intern/Co-op/Student in title (description 'preferred' ignored)"
+    if filter_options is not None:
+        # Dynamic path: apply frontend options first
+        if filter_options.exclude_intern_coop and EXCLUDE_TITLE_DESC.search(title):
+            return "Too Senior", "Exclude: Intern/Co-op/Student in title (description 'preferred' ignored)"
+        # Optional graduation year: only filter when user set a specific year
+        if filter_options.graduation_year is not None:
+            grad_years = _grad_years_mentioned(combined)
+            if grad_years and not any(y == filter_options.graduation_year for y in grad_years):
+                bad = next((y for y in grad_years if y != filter_options.graduation_year), grad_years[0])
+                return "Too Senior", f"Exclude: Position requires {bad} graduation (filter: {filter_options.graduation_year})"
+        # Job type / role: if user selected any roles, keep only jobs matching those roles
+        if filter_options.job_roles:
+            keywords = []
+            for role_id in filter_options.job_roles:
+                keywords.extend(JOB_ROLE_KEYWORDS.get(role_id, []))
+            if keywords:
+                combined_lower = combined.lower()
+                if not any(kw in combined_lower for kw in keywords):
+                    return "Too Senior", "Exclude: job type not in selected roles"
+        req_years = _parse_required_years(combined)
+        if req_years is not None and req_years > filter_options.years_max:
+            return "Too Senior", f"Exclude: job requires {req_years}+ years (max {filter_options.years_max})"
+    else:
+        # Original hardcoded path (hunt.py)
+        if EXCLUDE_TITLE_DESC.search(title):
+            return "Too Senior", "Exclude: Intern/Co-op/Student in title (description 'preferred' ignored)"
+        if EXCLUDE_2026_GRAD.search(combined):
+            return "Too Senior", "Exclude: Position requires 2026 graduation (we graduate June 2025)"
+
     if NON_SOFTWARE_TITLE.search(title):
         return "Too Senior", "Exclude: job title not software/tech related (e.g. Construction, CAD-only)"
     if SENIOR_LEVEL_IN_TITLE.search(title):
         return "Too Senior", "Exclude: Level 2+ or III/IV in title (too senior)"
-    if EXCLUDE_2026_GRAD.search(combined):
-        return "Too Senior", "Exclude: Position requires 2026 graduation (we graduate June 2025)"
 
     # If the title itself signals entry-level (Junior/Associate/Entry-Level), do not exclude
     # based on senior keywords that appear in context (e.g. "work with senior engineers")

@@ -19,6 +19,15 @@ A chronological log of features and changes, so I can look back and see what was
 ---
 
 ## II. Changelog (newest first)
+- **2026-03-15**
+  - Architecture: introduced SQLite as the single source of truth for jobs; added `status` (new/applied/ignored) and `applied_at`; upsert keeps user-updated status and supports 90-day “same company + same job title => treated as applied” dedup logic.
+  - Backend/Scraping: added `POST /api/jobs/refresh` to scrape and upsert into DB; `/api/jobs` supports the Applied tab with proper counts; improved refresh error reporting by surfacing the relevant tail output from `hunt.py`.
+  - Frontend UI: added Location (Canada / United States) filtering and an Applied (N) tab; JobCard supports “Mark as applied”; Job Type changed to multi-select scrollable dropdown; added debounce for filter inputs; Run can optionally refresh first; UI displays per-site scrape counts and dedup results.
+
+- **2026-03-20**
+  - Release v1.0: migrated job persistence from CSV outputs to SQLite; introduced `status` (new/applied/ignored) and `applied_at` for “applied work” tracking.
+  - UI: enhanced the filter bar for more flexible matching (including debounced inputs) and added an Applied tab with correct applied counts.
+
 
 - **2026-03-07**
   - UI: improved resume upload area — after choosing a file, a filename tag (with a × dismiss button) appears next to "Choose PDF" so users can see and cancel their selection at any time.

@@ -8,6 +8,8 @@ Core logic lives in the src/ package; this file is the CLI entry point only.
 from __future__ import annotations
 
 import argparse
+import json
+from datetime import datetime
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -16,6 +18,7 @@ load_dotenv()
 import pandas as pd
 
 from src.config import (
+    DATA_DIR,
     RESUME_PDF_PATH,
     auto_update_resume_skills,
     load_skill_config,
@@ -23,9 +26,10 @@ from src.config import (
 )
 from src.resume import get_resume_text
 from src.scoring import get_semantic_model, compute_hybrid_score, SCORE_WEIGHTS
-from src.filters import classify_job, location_score
+from src.filters import location_score
 from src.salary import extract_salary_from_text
 from src.scrape import run_scrape
+from src import db as db_module
 
 
 def main():
@@ -46,6 +50,7 @@ def main():
         help="Run ATS analysis on top N jobs after scraping (0 = skip, default)",
     )
     parser.add_argument("--deepseek-key", default="", help="DeepSeek API key")
+    parser.add_argument("--export-xlsx", action="store_true", help="Export DB to xlsx after upsert (for backup or ATS)")
     args = parser.parse_args()
 
     # 1) Load semantic model
@@ -91,13 +96,17 @@ def main():
     if df.empty:
         print("No jobs found.")
         return
+    total_scraped = len(df)
+    requested_per_site = args.results
+    by_site = {}
     if "site" in df.columns:
+        for site, count in df["site"].value_counts().items():
+            by_site[str(site)] = {"requested": requested_per_site, "got": int(count)}
         print("Results by site:", df["site"].value_counts().to_dict())
 
-    # 5) Score and classify each job
-    target_levels, rejection_reasons, match_scores = [], [], []
+    # 5) Score each job (no hardcoded classification — API + filter bar do that from sheet "All")
+    match_scores = []
     for _, row in df.iterrows():
-        level, reason = classify_job(row, skills)
         score = compute_hybrid_score(
             model, resume_embedding,
             str(row.get("description") or ""),
@@ -105,13 +114,21 @@ def main():
             str(row.get("location") or ""),
             skills, weights,
         )
-        target_levels.append(level)
-        rejection_reasons.append(reason)
         match_scores.append(score)
-
-    df["Target Level"] = target_levels
-    df["Rejection_Reason"] = rejection_reasons
     df["Match_Score"] = match_scores
+
+    # --- Previously: classify_job(row, skills) and split into Jobs / Filtered_Out (kept for reference) ---
+    # from src.filters import classify_job
+    # target_levels, rejection_reasons = [], []
+    # for _, row in df.iterrows():
+    #     level, reason = classify_job(row, skills)
+    #     target_levels.append(level)
+    #     rejection_reasons.append(reason)
+    # df["Target Level"] = target_levels
+    # df["Rejection_Reason"] = rejection_reasons
+    # kept = df[df["Target Level"].isin(["Perfect Match", "Possible", "Unlikely"])].copy()
+    # filtered = df[df["Target Level"] == "Too Senior"].copy()
+    # ... dedupe kept, write kept → Jobs, filtered → Filtered_Out
 
     # 6) Extract salary range
     def _salary_range(row: pd.Series) -> str:
@@ -126,67 +143,71 @@ def main():
 
     df["salary_range"] = df.apply(_salary_range, axis=1)
 
-    OUTPUT_COLUMNS = [
+    ALL_COLUMNS = [
         "title", "company", "location", "job_url", "date_posted",
-        "Target Level", "Match_Score", "Rejection_Reason",
-        "is_remote", "salary_range", "site", "description",
+        "Match_Score", "is_remote", "salary_range", "site", "description",
     ]
 
-    def _keep_columns(frame: pd.DataFrame) -> pd.DataFrame:
-        cols = [c for c in OUTPUT_COLUMNS if c in frame.columns]
-        return frame[cols].copy()
-
-    # 7) Deduplicate and group results
-    kept = df[df["Target Level"].isin(["Perfect Match", "Possible", "Unlikely"])].copy()
-    kept["location_score"] = kept["location"].map(
+    # 7) Deduplicate by (company, title), keep row with best location score
+    df["location_score"] = df["location"].map(
         lambda x: location_score(str(x) if pd.notna(x) else "")
     )
-    kept = kept.sort_values(["company", "title", "location_score"], ascending=[True, True, False])
-    duplicate_mask = kept.duplicated(subset=["company", "title"], keep="first")
-    n_dupes = int(duplicate_mask.sum())
+    df = df.sort_values(["company", "title", "location_score"], ascending=[True, True, False])
+    # Save removed duplicates so you can review (same company+title, different site/link)
+    removed = df[df.duplicated(subset=["company", "title"], keep="first")].copy()
+    df = df.drop_duplicates(subset=["company", "title"], keep="first")
+    df = df.drop(columns=["location_score"], errors="ignore")
+    if not removed.empty:
+        removed = removed.drop(columns=["location_score"], errors="ignore")
+        removed = removed[[c for c in ALL_COLUMNS if c in removed.columns]]
+        n_removed = db_module.save_dedup_removed(removed)
+        print(f"Saved {n_removed} duplicate rows (removed by company+title) to DB table jobs_dedup_removed ({db_module.DB_PATH})")
 
-    dupes = kept[duplicate_mask].copy()
-    dupes["Target Level"] = "Filtered"
-    dupes["Rejection_Reason"] = "Duplicate Posting (Preferred higher priority location)"
-    kept = kept[~duplicate_mask].drop(columns=["location_score"], errors="ignore")
-    dupes = dupes.drop(columns=["location_score"], errors="ignore")
+    out_df = df[[c for c in ALL_COLUMNS if c in df.columns]].copy()
+    out_df = out_df.sort_values("Match_Score", ascending=False).reset_index(drop=True)
 
-    kept = _keep_columns(kept).sort_values("Match_Score", ascending=False).reset_index(drop=True)
+    total_after_dedup = len(out_df)
+    dedup_removed_count = len(removed) if not removed.empty else 0
+    scrape_stats = {
+        "results_wanted_per_site": requested_per_site,
+        "by_site": by_site,
+        "total_scraped": total_scraped,
+        "total_after_dedup": total_after_dedup,
+        "dedup_removed": dedup_removed_count,
+        "at": datetime.utcnow().isoformat() + "Z",
+    }
+    stats_path = DATA_DIR / "last_scrape_stats.json"
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
+    with open(stats_path, "w", encoding="utf-8") as f:
+        json.dump(scrape_stats, f, ensure_ascii=False, indent=2)
+    print(f"Scrape stats written to {stats_path}")
 
-    filtered = df[df["Target Level"] == "Too Senior"].copy()
-    filtered = _keep_columns(filtered)
-    if n_dupes > 0:
-        filtered = pd.concat([filtered, _keep_columns(dupes)], ignore_index=True)
-    filtered = filtered.sort_values("Match_Score", ascending=False).reset_index(drop=True)
-
-    # 8) Write Excel output
+    # 8) Upsert to SQLite (source of truth); optionally export to xlsx
     out_path = Path(args.out)
-    out_path.parent.mkdir(parents=True, exist_ok=True)
-    with pd.ExcelWriter(out_path, engine="openpyxl") as writer:
-        kept.to_excel(writer, sheet_name="Jobs", index=False)
-        filtered.to_excel(writer, sheet_name="Filtered_Out", index=False)
-
-    print(f"Kept {len(kept)} jobs → sheet 'Jobs' (sorted by Match_Score)")
-    print(f"Filtered {len(filtered)} jobs → sheet 'Filtered_Out'")
-    print(f"Written to: {out_path.absolute()}")
-    if n_dupes > 0:
-        print(f"Deduplication moved {n_dupes} duplicate posting(s) to Filtered_Out.")
-
+    n = db_module.upsert_jobs(out_df)
+    print(f"Upserted {n} jobs to DB ({db_module.DB_PATH})")
+    if getattr(args, "export_xlsx", False) or args.analyze_top > 0:
+        db_module.export_to_xlsx(out_path)
+        print(f"Exported to {out_path.absolute()}")
     if args.csv:
-        csv_path = out_path.with_suffix(".csv")
-        kept.to_csv(csv_path, index=False, encoding="utf-8-sig")
-        print(f"CSV written to: {csv_path.absolute()}")
+        all_jobs = db_module.get_all_jobs()
+        if all_jobs:
+            export_cols = ["title", "company", "location", "job_url", "date_posted", "Match_Score", "is_remote", "salary_range", "site", "description"]
+            csv_df = pd.DataFrame([{k: j.get(k) for k in export_cols} for j in all_jobs])
+            csv_path = out_path.with_suffix(".csv")
+            csv_df.to_csv(csv_path, index=False, encoding="utf-8-sig")
+            print(f"CSV: {csv_path.absolute()}")
 
-    # 9) Optional ATS analysis on top N jobs (slow — calls DeepSeek API)
-    if args.analyze_top > 0 and kept.shape[0] > 0:
-        n_analyze = min(args.analyze_top, len(kept))
+    # 9) Optional ATS analysis on top N jobs by Match_Score (slow — calls DeepSeek API)
+    if args.analyze_top > 0 and out_df.shape[0] > 0:
+        n_analyze = min(args.analyze_top, len(out_df))
         print(f"Running ATS analysis on top {n_analyze} jobs (DeepSeek API, may take several minutes)…")
         try:
             from src.ats import run_ats_analysis
             report_path = run_ats_analysis(
                 excel_path=str(out_path),
                 resume_pdf_path=args.resume_pdf,
-                top_n=min(args.analyze_top, len(kept)),
+                top_n=n_analyze,
                 api_key=args.deepseek_key or None,
                 output_path=str(out_path.parent / "ats_analysis_report.md"),
             )
@@ -194,11 +215,6 @@ def main():
                 print(f"ATS analysis complete. Report: {report_path}")
         except Exception as e:
             print(f"WARNING: ATS analysis failed: {e}")
-
-    if not filtered.empty:
-        print("\n--- Rejection reason summary ---")
-        for reason, cnt in filtered["Rejection_Reason"].value_counts().items():
-            print(f"  [{cnt}] {reason}")
 
 
 if __name__ == "__main__":

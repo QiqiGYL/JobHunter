@@ -88,6 +88,22 @@
   color: #1a5fb4;
 }
 
+.job-applied-badge {
+  display: inline-block;
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 0.1rem 0.45rem;
+  border-radius: 4px;
+  background: #f0f0f0;
+  color: #555;
+  margin-left: 0.25rem;
+}
+
+.job-card.job-card-applied {
+  opacity: 0.92;
+  border-color: #e0e0e0;
+}
+
 .job-level {
   margin: 0 0 0.2rem 0;
   font-size: 0.8rem;

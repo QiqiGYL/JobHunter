@@ -6,7 +6,7 @@ JobHunter pulls job postings from Indeed and LinkedIn, scores each one against y
 
 ---
 
-![JobHunter UI](assets/ui-screenshot.png)
+![JobHunter UI](assets/ui-screenshot2.png)
 
 ---
 

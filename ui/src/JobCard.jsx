@@ -1,5 +1,8 @@
+import { useState } from 'react'
 import { Button } from 'antd'
 import './JobCard.css'
+
+const API = '/api'
 
 function matchLabel(score) {
   if (score == null) return ''
@@ -10,12 +13,29 @@ function matchLabel(score) {
   return 'LOW'
 }
 
-export function JobCard({ job, isFilteredOut, jobKey, onRequestAnalysis, analysisLoading, t }) {
+export function JobCard({ job, isFilteredOut, isAppliedTab, jobKey, onRequestAnalysis, analysisLoading, onMarkApplied, t }) {
+  const [markingApplied, setMarkingApplied] = useState(false)
   const score = job.Match_Score != null ? Number(job.Match_Score) : null
   const label = matchLabel(score)
+  const isApplied = job.status === 'applied'
+
+  const handleMarkApplied = async () => {
+    if (!job.job_id || !onMarkApplied) return
+    setMarkingApplied(true)
+    try {
+      const res = await fetch(`${API}/jobs/${job.job_id}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'applied' }),
+      })
+      if (res.ok) onMarkApplied()
+    } finally {
+      setMarkingApplied(false)
+    }
+  }
 
   return (
-    <li className={`job-card ${isFilteredOut ? 'filtered-out' : ''}`}>
+    <li className={`job-card ${isFilteredOut ? 'filtered-out' : ''} ${isApplied ? 'job-card-applied' : ''}`}>
       <div className="job-card-main">
         <div className="job-card-left">
           <h3 className="job-title">{job.title || '—'}</h3>
@@ -29,6 +49,7 @@ export function JobCard({ job, isFilteredOut, jobKey, onRequestAnalysis, analysi
           <p className="job-meta">
             {job.site && <span className="job-source-badge">{job.site}</span>}
             {job.is_remote === true || job.is_remote === 'True' ? <span className="job-remote-badge">Remote</span> : null}
+            {isApplied && <span className="job-applied-badge">{t.appliedLabel}</span>}
           </p>
           {job['Target Level'] && (
             <p className="job-level">Target: {job['Target Level']}</p>
@@ -41,6 +62,11 @@ export function JobCard({ job, isFilteredOut, jobKey, onRequestAnalysis, analysi
               <a href={job.job_url} target="_blank" rel="noopener noreferrer" className="job-link">
                 {t.viewJob}
               </a>
+            )}
+            {job.job_id && onMarkApplied && !isApplied && (
+              <Button type="default" size="small" onClick={handleMarkApplied} loading={markingApplied}>
+                {t.markApplied}
+              </Button>
             )}
             {onRequestAnalysis && jobKey != null && (
               <Button type="primary" size="small" onClick={() => onRequestAnalysis(job, jobKey)} loading={analysisLoading}>
