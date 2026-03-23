@@ -37,8 +37,11 @@ def main():
         description="Job scraping & scoring (4-component: semantic 40% + keyword 35% + title 15% + location 10%)"
     )
     parser.add_argument("--search", default="Junior Software Engineer", help="Job search query")
+    parser.add_argument("--search-terms", default="", help="Comma-separated search queries; if set, overrides --search")
     parser.add_argument("--location", default="Canada", help="Job location")
     parser.add_argument("--results", type=int, default=30, help="Results per site")
+    parser.add_argument("--results-indeed", type=int, default=None, help="Indeed results override")
+    parser.add_argument("--results-linkedin", type=int, default=None, help="LinkedIn results override")
     parser.add_argument("--sites", default="indeed,linkedin", help="Comma-separated site list")
     parser.add_argument("--resume-pdf", default=RESUME_PDF_PATH, help="Path to resume PDF")
     parser.add_argument("--out", default="data/job_hunt_results.xlsx", help="Output Excel path")
@@ -87,12 +90,30 @@ def main():
 
     # 4) Scrape jobs
     print("Scraping jobs (hours_old=24)...")
-    df = run_scrape(
-        search_term=args.search,
-        location=args.location,
-        results_wanted=args.results,
-        site_name=[s.strip() for s in args.sites.split(",") if s.strip()] or None,
-    )
+    search_terms = [s.strip() for s in str(args.search_terms).split(",") if s.strip()]
+    if not search_terms:
+        search_terms = [args.search]
+    site_results_wanted = {}
+    if args.results_indeed is not None:
+        site_results_wanted["indeed"] = max(1, int(args.results_indeed))
+    if args.results_linkedin is not None:
+        site_results_wanted["linkedin"] = max(1, int(args.results_linkedin))
+    frames = []
+    for term in search_terms:
+        print(f"Search term: {term}")
+        one_df = run_scrape(
+            search_term=term,
+            location=args.location,
+            results_wanted=args.results,
+            site_name=[s.strip() for s in args.sites.split(",") if s.strip()] or None,
+            site_results_wanted=site_results_wanted or None,
+        )
+        if one_df is not None and not one_df.empty:
+            frames.append(one_df)
+    if not frames:
+        print("No jobs found.")
+        return
+    df = pd.concat(frames, ignore_index=True)
     if df.empty:
         print("No jobs found.")
         return
@@ -101,7 +122,9 @@ def main():
     by_site = {}
     if "site" in df.columns:
         for site, count in df["site"].value_counts().items():
-            by_site[str(site)] = {"requested": requested_per_site, "got": int(count)}
+            site_key = str(site).strip().lower()
+            requested = site_results_wanted.get(site_key, requested_per_site)
+            by_site[str(site)] = {"requested": int(requested), "got": int(count)}
         print("Results by site:", df["site"].value_counts().to_dict())
 
     # 5) Score each job (no hardcoded classification — API + filter bar do that from sheet "All")
@@ -170,6 +193,8 @@ def main():
     dedup_removed_count = len(removed) if not removed.empty else 0
     scrape_stats = {
         "results_wanted_per_site": requested_per_site,
+        "site_overrides": site_results_wanted,
+        "search_terms": search_terms,
         "by_site": by_site,
         "total_scraped": total_scraped,
         "total_after_dedup": total_after_dedup,

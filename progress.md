@@ -19,6 +19,30 @@ A chronological log of features and changes, so I can look back and see what was
 ---
 
 ## II. Changelog (newest first)
+- **2026-03-23**
+  - Quick roles compact style: switched quick-role pills to a single-line horizontal row with smaller typography/padding; added horizontal overflow support so layout stays clean on narrow widths.
+  - Search Roles micro-interaction: quick-role presets reduced to three junior-focused options (`Junior Software Developer`, `Junior Data Analyst`, `Junior Quality Assurance`).
+  - Enter-hint behavior: “Press ↵ Enter to add ...” is now conditionally shown only while the Search Roles input is focused and non-empty, rendered directly below the input as a subtle rounded hint.
+  - Search box UI deep refactor: Search Roles container now uses fixed max width (`500px`) with wrapped inline chips; tags no longer stretch the filter panel and remain vertically centered inside the input area.
+  - Quick roles redesign: moved quick-role pills directly below the Search Roles input; changed to subtle gray pill buttons with selected-state highlighting, and clicking pills toggles their role chips in the main search container.
+  - Search Roles unification: merged Search input, quick tags, and selected tags into one multi-select search box; selected role chips now live inside the input container for consistent visual and state behavior.
+  - Interaction polish: quick role tags now directly add roles, suggestion clicks add-and-clear input, and selected chips can be removed inline.
+  - Search UI simplification: removed the overlapping Job Type selector and merged query selection into a single Search Roles workflow (type-ahead suggestions + Enter to add custom role + quick role tags).
+  - Layout update: filter bar now prioritizes `[Location] [Search Roles] [Graduation year] [Years of experience]` for faster scan and less clutter.
+  - Query suggestion MVP: added search-keyword-based suggested scrape queries in the UI (select up to 5 tags), with role-based fallback query generation when no tags are selected.
+  - Refresh pipeline: `POST /api/jobs/refresh` now accepts `searchTerms`; backend validates them and forwards to `hunt.py --search-terms`, which scrapes per term and merges results before dedup/upsert.
+  - Filter constraints: graduation year range is now constrained to 2020–2026 in both frontend input and backend parsing/suggestions.
+
+- **2026-03-20**
+  - Frontend UX: filter changes no longer auto-trigger `/api/jobs`; job list refresh is now manual via the Run button (initial page load still fetches once).
+  - Refresh UI/API: added independent scrape count inputs for Indeed and LinkedIn; backend refresh now forwards per-site counts to `hunt.py` via `--results-indeed` and `--results-linkedin`.
+  - Filter reason precision: senior-keyword rejection reason is now dynamic in API mode and reflects the user's selected `years_max` (e.g. max=5 -> reason shows 6+ / Senior / Staff / Lead).
+  - Refresh customization: added optional `sites` (`indeed`/`linkedin`) and `resultsPerSite` parameters to `POST /api/jobs/refresh`; backend now validates and forwards them to `hunt.py` (`--sites`, `--results`) in async refresh tasks.
+  - Frontend filter bar: when "Refresh jobs from web first" is enabled, users can choose scrape sites and set results-per-site directly in UI before clicking Run.
+  - Scraping behavior: `src/scrape.py` now consistently honors `results_wanted` for each selected site instead of using hardcoded per-site defaults.
+  - Backend API: changed job refresh from synchronous blocking execution to asynchronous tasks; `POST /api/jobs/refresh` now returns a `taskId`, and `GET /api/jobs/refresh/<task_id>` returns task status (`running/succeeded/failed`) with error details when available.
+  - Frontend: updated Run flow to poll refresh task status every 2 seconds, handle timeout/failure gracefully, and fetch latest jobs only after refresh succeeds.
+
 - **2026-03-15**
   - Architecture: introduced SQLite as the single source of truth for jobs; added `status` (new/applied/ignored) and `applied_at`; upsert keeps user-updated status and supports 90-day “same company + same job title => treated as applied” dedup logic.
   - Backend/Scraping: added `POST /api/jobs/refresh` to scrape and upsert into DB; `/api/jobs` supports the Applied tab with proper counts; improved refresh error reporting by surfacing the relevant tail output from `hunt.py`.

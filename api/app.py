@@ -12,6 +12,8 @@ import os
 import re
 import subprocess
 import sys
+import threading
+import uuid
 from pathlib import Path
 from typing import Optional
 
@@ -38,6 +40,102 @@ ATS_CACHE_FILE = ROOT / "data" / "ats_analysis_cache.json"
 app = Flask(__name__, static_folder=None)
 app.config["MAX_CONTENT_LENGTH"] = 20 * 1024 * 1024  # 20 MB
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+
+REFRESH_TASKS: dict[str, dict] = {}
+REFRESH_TASKS_LOCK = threading.Lock()
+
+
+def _refresh_task_payload(task_id: str) -> Optional[dict]:
+    with REFRESH_TASKS_LOCK:
+        task = REFRESH_TASKS.get(task_id)
+        if task is None:
+            return None
+        return {
+            "taskId": task["taskId"],
+            "status": task["status"],
+            "message": task.get("message"),
+            "error": task.get("error"),
+            "detail": task.get("detail"),
+            "jobsCount": task.get("jobsCount"),
+            "createdAt": task.get("createdAt"),
+            "updatedAt": task.get("updatedAt"),
+        }
+
+
+def _run_refresh_task(
+    task_id: str,
+    results_per_site: int,
+    sites_csv: str,
+    indeed_count: Optional[int],
+    linkedin_count: Optional[int],
+    search_terms: list[str],
+) -> None:
+    """Execute hunt.py in background and update task status."""
+    try:
+        cmd = [
+            sys.executable,
+            str(ROOT / "hunt.py"),
+            "--results",
+            str(results_per_site),
+            "--sites",
+            sites_csv,
+        ]
+        if indeed_count is not None:
+            cmd.extend(["--results-indeed", str(indeed_count)])
+        if linkedin_count is not None:
+            cmd.extend(["--results-linkedin", str(linkedin_count)])
+        if search_terms:
+            cmd.extend(["--search-terms", ",".join(search_terms)])
+        result = subprocess.run(
+            cmd,
+            cwd=str(ROOT),
+            capture_output=True,
+            text=True,
+            timeout=600,
+            env={**os.environ},
+        )
+        if result.returncode != 0:
+            stderr = (result.stderr or "").strip()
+            stdout = (result.stdout or "").strip()
+            parts = []
+            if stderr:
+                tail = stderr[-2200:] if len(stderr) > 2200 else stderr
+                parts.append("--- stderr ---\n" + tail)
+            if stdout:
+                tail = stdout[-1500:] if len(stdout) > 1500 else stdout
+                parts.append("--- stdout ---\n" + tail)
+            detail = "\n".join(parts) if parts else None
+            with REFRESH_TASKS_LOCK:
+                task = REFRESH_TASKS.get(task_id)
+                if task is not None:
+                    task["status"] = "failed"
+                    task["error"] = "hunt.py failed"
+                    task["detail"] = detail
+                    task["updatedAt"] = pd.Timestamp.utcnow().isoformat()
+            return
+
+        jobs_count = len(db_module.get_all_jobs()) if getattr(db_module, "get_all_jobs", None) else 0
+        with REFRESH_TASKS_LOCK:
+            task = REFRESH_TASKS.get(task_id)
+            if task is not None:
+                task["status"] = "succeeded"
+                task["message"] = "Jobs refreshed"
+                task["jobsCount"] = jobs_count
+                task["updatedAt"] = pd.Timestamp.utcnow().isoformat()
+    except subprocess.TimeoutExpired:
+        with REFRESH_TASKS_LOCK:
+            task = REFRESH_TASKS.get(task_id)
+            if task is not None:
+                task["status"] = "failed"
+                task["error"] = "Refresh timed out (max 10 min)"
+                task["updatedAt"] = pd.Timestamp.utcnow().isoformat()
+    except Exception as e:
+        with REFRESH_TASKS_LOCK:
+            task = REFRESH_TASKS.get(task_id)
+            if task is not None:
+                task["status"] = "failed"
+                task["error"] = str(e)
+                task["updatedAt"] = pd.Timestamp.utcnow().isoformat()
 
 
 def _job_cache_key(job: dict) -> str:
@@ -131,7 +229,10 @@ def _parse_filter_options(request) -> FilterOptions:
         if val is None or (isinstance(val, str) and val.strip() == ""):
             return None
         try:
-            return int(val)
+            n = int(val)
+            if key == "graduation_year" and not (2020 <= n <= 2026):
+                return None
+            return n
         except ValueError:
             return None
 
@@ -302,43 +403,84 @@ def update_job_status_route(job_id: str):
 
 @app.route("/api/jobs/refresh", methods=["POST"])
 def jobs_refresh():
-    """Run hunt.py to scrape jobs and upsert into DB. May take 1–5 minutes. Returns { ok, message, jobsCount }."""
+    """Start async refresh task and return task ID immediately."""
+    data = request.get_json(silent=True) or {}
+    sites = data.get("sites")
+    if not isinstance(sites, list):
+        sites = ["indeed", "linkedin"]
+    sites_clean = []
+    allowed_sites = {"indeed", "linkedin"}
+    for s in sites:
+        v = str(s).strip().lower()
+        if v in allowed_sites and v not in sites_clean:
+            sites_clean.append(v)
+    if not sites_clean:
+        return jsonify({"ok": False, "error": "sites must include at least one of: indeed, linkedin"}), 400
+
+    results_per_site_raw = data.get("resultsPerSite", 30)
     try:
-        result = subprocess.run(
-            [sys.executable, str(ROOT / "hunt.py")],
-            cwd=str(ROOT),
-            capture_output=True,
-            text=True,
-            timeout=600,
-            env={**os.environ},
-        )
-        if result.returncode != 0:
-            stderr = (result.stderr or "").strip()
-            stdout = (result.stdout or "").strip()
-            # Show end of both: traceback usually in stderr, but some libs print to stdout
-            parts = []
-            if stderr:
-                tail = stderr[-2200:] if len(stderr) > 2200 else stderr
-                parts.append("--- stderr ---\n" + tail)
-            if stdout:
-                tail = stdout[-1500:] if len(stdout) > 1500 else stdout
-                parts.append("--- stdout ---\n" + tail)
-            detail = "\n".join(parts) if parts else None
-            return jsonify({
-                "ok": False,
-                "error": "hunt.py failed",
-                "detail": detail,
-            }), 500
-        jobs_count = len(db_module.get_all_jobs()) if getattr(db_module, "get_all_jobs", None) else 0
-        return jsonify({
-            "ok": True,
-            "message": "Jobs refreshed",
-            "jobsCount": jobs_count,
-        })
-    except subprocess.TimeoutExpired:
-        return jsonify({"ok": False, "error": "Refresh timed out (max 10 min)"}), 504
-    except Exception as e:
-        return jsonify({"ok": False, "error": str(e)}), 500
+        results_per_site = int(results_per_site_raw)
+    except Exception:
+        return jsonify({"ok": False, "error": "resultsPerSite must be an integer"}), 400
+    if results_per_site < 1 or results_per_site > 300:
+        return jsonify({"ok": False, "error": "resultsPerSite must be between 1 and 300"}), 400
+    indeed_count_raw = data.get("indeedCount", results_per_site)
+    linkedin_count_raw = data.get("linkedinCount", results_per_site)
+    try:
+        indeed_count = int(indeed_count_raw)
+        linkedin_count = int(linkedin_count_raw)
+    except Exception:
+        return jsonify({"ok": False, "error": "indeedCount/linkedinCount must be integers"}), 400
+    if not (1 <= indeed_count <= 300 and 1 <= linkedin_count <= 300):
+        return jsonify({"ok": False, "error": "indeedCount/linkedinCount must be between 1 and 300"}), 400
+    search_terms_raw = data.get("searchTerms")
+    search_terms = []
+    if isinstance(search_terms_raw, list):
+        for x in search_terms_raw:
+            s = str(x).strip()
+            if s and s not in search_terms:
+                search_terms.append(s)
+    if len(search_terms) > 5:
+        return jsonify({"ok": False, "error": "searchTerms supports up to 5 items"}), 400
+    for s in search_terms:
+        if len(s) < 2 or len(s) > 80:
+            return jsonify({"ok": False, "error": "each search term must be 2-80 chars"}), 400
+
+    sites_csv = ",".join(sites_clean)
+    task_id = uuid.uuid4().hex[:16]
+    now = pd.Timestamp.utcnow().isoformat()
+    with REFRESH_TASKS_LOCK:
+        REFRESH_TASKS[task_id] = {
+            "taskId": task_id,
+            "status": "running",
+            "message": "Refresh started",
+            "error": None,
+            "detail": None,
+            "jobsCount": None,
+            "resultsPerSite": results_per_site,
+            "indeedCount": indeed_count,
+            "linkedinCount": linkedin_count,
+            "sites": sites_clean,
+            "searchTerms": search_terms,
+            "createdAt": now,
+            "updatedAt": now,
+        }
+    t = threading.Thread(
+        target=_run_refresh_task,
+        args=(task_id, results_per_site, sites_csv, indeed_count, linkedin_count, search_terms),
+        daemon=True,
+    )
+    t.start()
+    return jsonify({"ok": True, "taskId": task_id, "status": "running"}), 202
+
+
+@app.route("/api/jobs/refresh/<task_id>", methods=["GET"])
+def jobs_refresh_status(task_id: str):
+    """Get async refresh task status by task ID."""
+    task = _refresh_task_payload(task_id)
+    if task is None:
+        return jsonify({"ok": False, "error": "task not found"}), 404
+    return jsonify({"ok": True, **task})
 
 
 @app.route("/api/resume", methods=["POST"])
@@ -402,7 +544,7 @@ def _suggest_filter_from_resume(resume_path: Path) -> dict:
     )
     if year_match:
         y = int(year_match.group(1))
-        if 2020 <= y <= 2030:
+        if 2020 <= y <= 2026:
             out["graduation_year"] = y
     return out
 
@@ -428,8 +570,9 @@ def _cors(resp):
 @app.route("/api/jobs", methods=["OPTIONS"])
 @app.route("/api/jobs/analyze", methods=["OPTIONS"])
 @app.route("/api/jobs/refresh", methods=["OPTIONS"])
+@app.route("/api/jobs/refresh/<task_id>", methods=["OPTIONS"])
 @app.route("/api/jobs/<job_id>/status", methods=["OPTIONS"])
-def _cors_preflight(job_id=None):
+def _cors_preflight(job_id=None, task_id=None):
     return "", 204
 
 

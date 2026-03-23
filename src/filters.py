@@ -224,6 +224,9 @@ def classify_job(
     # based on senior keywords that appear in context (e.g. "work with senior engineers")
     title_entry = bool(ENTRY_LEVEL.search(title))
     if not title_entry and SENIOR_PATTERNS.search(combined):
+        if filter_options is not None:
+            threshold = int(filter_options.years_max) + 1
+            return "Too Senior", f"Exclude: {threshold}+ years / Senior / Staff / Lead (max {filter_options.years_max})"
         return "Too Senior", "Exclude: 4+ years / Senior / Staff / Lead"
 
     grad_unlikely = bool(GRAD_MUST_BY_DATE.search(combined))

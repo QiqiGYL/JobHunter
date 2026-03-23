@@ -34,16 +34,28 @@ const LANGS = {
     yearsMax: 'Max',
     graduationYear: 'Graduation year',
     graduationYearPlaceholder: 'Any (new grad & non-new grad)',
-    jobType: 'Job type',
-    jobTypeSoftware: 'Software Developer',
-    jobTypeQA: 'Quality Assurance',
-    jobTypeData: 'Data Analyst',
-    jobTypeAny: 'Any',
+    searchRoles: 'Search roles',
+    searchRolesPlaceholder: 'Type role (e.g. software, data, qa)',
+    quickRoles: 'Quick roles',
+    roleSuggestions: 'Suggestions',
+    selectedRoles: 'Selected roles',
+    addCustomRoleHintPrefix: 'Press',
+    addCustomRoleHintEnter: 'Enter',
+    addCustomRoleHintMiddle: 'to add',
     excludeInternCoop: 'Exclude Intern / CO-OP',
     resetFilters: 'Reset',
     runFilters: 'Run',
     refreshJobsFirst: 'Refresh jobs from web first (then apply filters)',
     refreshingJobs: 'Refreshing jobs from web…',
+    refreshFailed: 'Refresh failed',
+    refreshTimedOut: 'Refresh timed out',
+    scrapeSites: 'Scrape sites',
+    scrapeIndeed: 'Indeed',
+    scrapeLinkedIn: 'LinkedIn',
+    scrapeIndeedCount: 'Indeed results',
+    scrapeLinkedInCount: 'LinkedIn results',
+    scrapeSelectSiteHint: 'Select at least one site',
+    searchQueryLimit: 'You can select up to 5 roles',
     filterHint: 'Upload resume (optional) → set filters → click Run to update the list.',
     locationCountry: 'Location',
     locationAny: 'Any',
@@ -83,16 +95,28 @@ const LANGS = {
     yearsMax: '最多',
     graduationYear: '毕业年份',
     graduationYearPlaceholder: '选填，不填则 new grad 与非 new grad 都显示',
-    jobType: '职位类型',
-    jobTypeSoftware: '软件开发',
-    jobTypeQA: '质量保证 / QA',
-    jobTypeData: '数据分析',
-    jobTypeAny: '不限',
+    searchRoles: '职位关键词',
+    searchRolesPlaceholder: '输入职位关键词（如 software, data, qa）',
+    quickRoles: '常用职位',
+    roleSuggestions: '联想推荐',
+    selectedRoles: '已选职位',
+    addCustomRoleHintPrefix: '按',
+    addCustomRoleHintEnter: 'Enter',
+    addCustomRoleHintMiddle: '添加',
     excludeInternCoop: '排除实习 / CO-OP',
     resetFilters: '恢复默认',
     runFilters: '运行',
     refreshJobsFirst: '先从网页抓取职位再筛选',
     refreshingJobs: '正在抓取职位…',
+    refreshFailed: '刷新失败',
+    refreshTimedOut: '刷新超时',
+    scrapeSites: '抓取站点',
+    scrapeIndeed: 'Indeed',
+    scrapeLinkedIn: 'LinkedIn',
+    scrapeIndeedCount: 'Indeed 抓取数量',
+    scrapeLinkedInCount: 'LinkedIn 抓取数量',
+    scrapeSelectSiteHint: '请至少选择一个站点',
+    searchQueryLimit: '最多可选择 5 个职位关键词',
     filterHint: '上传简历（可选）→ 填筛选条件 → 点击「运行」更新列表。',
     locationCountry: '地区',
     locationAny: '不限',
@@ -129,28 +153,58 @@ export default function App() {
   const [yearsMin, setYearsMin] = useState(0)
   const [yearsMax, setYearsMax] = useState(2)
   const [graduationYear, setGraduationYear] = useState('') // '' = any (optional)
-  const [jobRoles, setJobRoles] = useState([])
   const [locationCountry, setLocationCountry] = useState('')
   const [excludeInternCoop, setExcludeInternCoop] = useState(true)
   const [filterBarOpen, setFilterBarOpen] = useState(true)
-  const [jobTypeDropdownOpen, setJobTypeDropdownOpen] = useState(false)
   const [refreshJobsFirst, setRefreshJobsFirst] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
   const [scrapeStats, setScrapeStats] = useState(null)
-
-  const JOB_TYPE_OPTIONS = [
-    { value: 'software_developer', labelKey: 'jobTypeSoftware' },
-    { value: 'quality_assurance', labelKey: 'jobTypeQA' },
-    { value: 'data_analyst', labelKey: 'jobTypeData' },
+  const [scrapeIndeed, setScrapeIndeed] = useState(true)
+  const [scrapeLinkedIn, setScrapeLinkedIn] = useState(true)
+  const [scrapeIndeedCount, setScrapeIndeedCount] = useState(100)
+  const [scrapeLinkedInCount, setScrapeLinkedInCount] = useState(30)
+  const [roleInput, setRoleInput] = useState('')
+  const [selectedRoles, setSelectedRoles] = useState([])
+  const [roleInputFocused, setRoleInputFocused] = useState(false)
+  const initialLoadedRef = useRef(false)
+  const ROLE_OPTIONS = [
+    'Software Engineer',
+    'Software Developer',
+    'Frontend Developer',
+    'Backend Developer',
+    'Full Stack Developer',
+    'Data Analyst',
+    'Business Intelligence Analyst',
+    'Data Scientist',
+    'QA Engineer',
+    'SDET',
+    'Java Developer',
   ]
-  const toggleJobRole = (role) => {
-    setJobRoles((prev) => (prev.includes(role) ? prev.filter((r) => r !== role) : [...prev, role]))
+  const QUICK_ROLE_TAGS = ['Junior Software Developer', 'Junior Data Analyst', 'Junior Quality Assurance']
+  const normalizedInput = roleInput.trim().toLowerCase()
+  const suggestedRoles = ROLE_OPTIONS.filter((r) => r.toLowerCase().includes(normalizedInput) && !selectedRoles.includes(r))
+  const addRole = (role) => {
+    const v = String(role || '').trim()
+    if (!v) return
+    setSelectedRoles((prev) => {
+      if (prev.includes(v)) return prev
+      if (prev.length >= 5) return prev
+      return [...prev, v]
+    })
   }
-  const jobTypeLabel = jobRoles.length === 0
-    ? t.jobTypeAny
-    : jobRoles.length === 1
-      ? t[JOB_TYPE_OPTIONS.find((o) => o.value === jobRoles[0])?.labelKey || 'jobTypeAny']
-      : `${jobRoles.length} selected`
+  const toggleRole = (role) => {
+    setSelectedRoles((prev) => {
+      if (prev.includes(role)) return prev.filter((x) => x !== role)
+      if (prev.length >= 5) return prev
+      return [...prev, role]
+    })
+  }
+  const addCustomRole = () => {
+    const v = roleInput.trim()
+    if (!v) return
+    addRole(v)
+    setRoleInput('')
+  }
 
   const fetchJobs = useCallback(async (tab = null) => {
     setLoading(true)
@@ -165,7 +219,6 @@ export default function App() {
         params.set('years_max', String(yearsMax))
         params.set('exclude_intern_coop', excludeInternCoop ? 'true' : 'false')
         if (graduationYear !== '' && graduationYear != null) params.set('graduation_year', String(graduationYear))
-        if (jobRoles.length > 0) params.set('job_roles', jobRoles.join(','))
         if (locationCountry) params.set('location_country', locationCountry)
       }
       const res = await fetch(`${API}/jobs?${params}`)
@@ -189,26 +242,22 @@ export default function App() {
     } finally {
       setLoading(false)
     }
-  }, [yearsMin, yearsMax, graduationYear, excludeInternCoop, jobRoles, locationCountry])
+  }, [yearsMin, yearsMax, graduationYear, excludeInternCoop, locationCountry])
 
-  const fetchJobsRef = useRef(fetchJobs)
-  fetchJobsRef.current = fetchJobs
-  const isFirstFetch = useRef(true)
-  const FILTER_DEBOUNCE_MS = 400
   useEffect(() => {
-    const delay = isFirstFetch.current ? 0 : FILTER_DEBOUNCE_MS
-    isFirstFetch.current = false
-    const t = setTimeout(() => fetchJobsRef.current(), delay)
-    return () => clearTimeout(t)
-  }, [yearsMin, yearsMax, graduationYear, excludeInternCoop, jobRoles, locationCountry])
+    if (initialLoadedRef.current) return
+    initialLoadedRef.current = true
+    fetchJobs()
+  }, [fetchJobs])
 
   const handleResetFilters = () => {
     setYearsMin(0)
     setYearsMax(2)
     setGraduationYear('')
-    setJobRoles([])
     setLocationCountry('')
     setExcludeInternCoop(true)
+    setRoleInput('')
+    setSelectedRoles([])
   }
 
   const handleResumeUploaded = async () => {
@@ -233,31 +282,70 @@ export default function App() {
     if (tab === 'applied') fetchJobs('applied')
   }
 
-  const REFRESH_TIMEOUT_MS = 5 * 60 * 1000 // 5 min
+  const REFRESH_TIMEOUT_MS = 10 * 60 * 1000 // 10 min
+  const REFRESH_POLL_MS = 2000
   const handleRunFilters = useCallback(async () => {
     if (refreshing) return
     if (refreshJobsFirst) {
       setRefreshing(true)
       setError(null)
       try {
-        const ac = new AbortController()
-        const to = setTimeout(() => ac.abort(), REFRESH_TIMEOUT_MS)
-        const res = await fetch(`${API}/jobs/refresh`, { method: 'POST', signal: ac.signal })
-        clearTimeout(to)
-        if (!res.ok) {
-          const data = await res.json().catch(() => ({}))
-          const detail = data.detail ? `\n${String(data.detail).trim().slice(0, 1500)}` : ''
-          throw new Error((data.error || res.statusText) + detail)
+        const selectedSites = [
+          ...(scrapeIndeed ? ['indeed'] : []),
+          ...(scrapeLinkedIn ? ['linkedin'] : []),
+        ]
+        if (selectedSites.length === 0) {
+          throw new Error(t.scrapeSelectSiteHint)
+        }
+        const finalSearchTerms = selectedRoles.length > 0 ? selectedRoles : (roleInput.trim() ? [roleInput.trim()] : [])
+        const startRes = await fetch(`${API}/jobs/refresh`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            sites: selectedSites,
+            resultsPerSite: 30,
+            indeedCount: Math.max(1, Math.min(300, Number(scrapeIndeedCount) || 100)),
+            linkedinCount: Math.max(1, Math.min(300, Number(scrapeLinkedInCount) || 30)),
+            searchTerms: finalSearchTerms,
+          }),
+        })
+        const startData = await startRes.json().catch(() => ({}))
+        if (!startRes.ok || !startData.taskId) {
+          const detail = startData.detail ? `\n${String(startData.detail).trim().slice(0, 1500)}` : ''
+          throw new Error((startData.error || startRes.statusText || t.refreshFailed) + detail)
+        }
+
+        const taskId = startData.taskId
+        const startedAt = Date.now()
+        let completed = false
+        while (!completed) {
+          if (Date.now() - startedAt > REFRESH_TIMEOUT_MS) {
+            throw new Error(t.refreshTimedOut)
+          }
+          await new Promise((resolve) => setTimeout(resolve, REFRESH_POLL_MS))
+          const statusRes = await fetch(`${API}/jobs/refresh/${taskId}`)
+          const statusData = await statusRes.json().catch(() => ({}))
+          if (!statusRes.ok) {
+            throw new Error(statusData.error || statusRes.statusText || t.refreshFailed)
+          }
+          if (statusData.status === 'succeeded') {
+            completed = true
+            break
+          }
+          if (statusData.status === 'failed') {
+            const detail = statusData.detail ? `\n${String(statusData.detail).trim().slice(0, 1500)}` : ''
+            throw new Error((statusData.error || t.refreshFailed) + detail)
+          }
         }
       } catch (e) {
         setRefreshing(false)
-        setError(e.name === 'AbortError' ? 'Refresh timed out' : (e.message || 'Refresh failed'))
+        setError(e.message || t.refreshFailed)
         return
       }
       setRefreshing(false)
     }
     fetchJobs()
-  }, [refreshing, refreshJobsFirst, fetchJobs])
+  }, [refreshing, refreshJobsFirst, fetchJobs, scrapeIndeed, scrapeLinkedIn, scrapeIndeedCount, scrapeLinkedInCount, selectedRoles, roleInput, t.refreshFailed, t.refreshTimedOut, t.scrapeSelectSiteHint])
 
   const handleRequestAnalysis = async (job, jobKey) => {
     const cached = analysisByKey[jobKey]
@@ -384,6 +472,100 @@ export default function App() {
             </button>
             {filterBarOpen && (
               <div className="filter-bar">
+                <span className="filter-bar-label">{t.locationCountry}</span>
+                <select
+                  value={locationCountry}
+                  onChange={(e) => setLocationCountry(e.target.value)}
+                  className="filter-input filter-select"
+                  aria-label={t.locationCountry}
+                >
+                  <option value="">{t.locationAny}</option>
+                  <option value="Canada">{t.locationCanada}</option>
+                  <option value="United States">{t.locationUS}</option>
+                </select>
+                <span className="filter-bar-label">{t.searchRoles}</span>
+                <div className="search-role-wrap">
+                  <div className="search-role-box">
+                    {selectedRoles.map((term) => (
+                      <button
+                        key={term}
+                        type="button"
+                        className="search-role-chip"
+                        onClick={() => toggleRole(term)}
+                        title={term}
+                      >
+                        {term} ×
+                      </button>
+                    ))}
+                    <input
+                      type="text"
+                      value={roleInput}
+                      onChange={(e) => setRoleInput(e.target.value)}
+                      onFocus={() => setRoleInputFocused(true)}
+                      onBlur={() => setRoleInputFocused(false)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault()
+                          addCustomRole()
+                        }
+                      }}
+                      className="search-role-inline-input"
+                      placeholder={selectedRoles.length ? '' : t.searchRolesPlaceholder}
+                      aria-label={t.searchRoles}
+                    />
+                  </div>
+                  {roleInput.trim() && suggestedRoles.length > 0 && (
+                    <div className="search-role-suggestions">
+                      {suggestedRoles.slice(0, 8).map((r) => (
+                        <button
+                          key={r}
+                          type="button"
+                          className="search-role-suggestion-item"
+                          onClick={() => {
+                            addRole(r)
+                            setRoleInput('')
+                          }}
+                        >
+                          {r}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {roleInputFocused && roleInput.trim() && (
+                    <div className="search-role-enter-hint">
+                      {t.addCustomRoleHintPrefix} <span className="search-role-enter-key">↵ {t.addCustomRoleHintEnter}</span> {t.addCustomRoleHintMiddle} "{roleInput.trim()}"
+                    </div>
+                  )}
+                  <div className="quick-roles-row">
+                    <span className="quick-roles-label">{t.quickRoles}</span>
+                    <div className="quick-roles-pills">
+                      {QUICK_ROLE_TAGS.map((term) => {
+                        const selected = selectedRoles.includes(term)
+                        return (
+                          <button
+                            key={term}
+                            type="button"
+                            className={`quick-role-pill ${selected ? 'quick-role-pill-selected' : ''}`}
+                            onClick={() => toggleRole(term)}
+                          >
+                            {term}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+                </div>
+                <span className="filter-bar-label">{t.graduationYear}</span>
+                <input
+                  type="number"
+                  min={2020}
+                  max={2026}
+                  value={graduationYear === '' ? '' : graduationYear}
+                  onChange={(e) => setGraduationYear(e.target.value === '' ? '' : (Number(e.target.value) || ''))}
+                  placeholder={t.graduationYearPlaceholder}
+                  className="filter-input filter-input-num"
+                  title={t.graduationYearPlaceholder}
+                />
                 <span className="filter-bar-label">{t.yearsExp}</span>
                 <input
                   type="number"
@@ -412,72 +594,6 @@ export default function App() {
                   className="filter-input filter-input-num"
                   aria-label={t.yearsMax}
                 />
-                <span className="filter-bar-label">{t.graduationYear}</span>
-                <input
-                  type="number"
-                  min={2020}
-                  max={2030}
-                  value={graduationYear === '' ? '' : graduationYear}
-                  onChange={(e) => setGraduationYear(e.target.value === '' ? '' : (Number(e.target.value) || ''))}
-                  placeholder={t.graduationYearPlaceholder}
-                  className="filter-input filter-input-num"
-                  title={t.graduationYearPlaceholder}
-                />
-                <span className="filter-bar-label">{t.jobType}</span>
-                <div className="filter-multiselect-wrap">
-                  <button
-                    type="button"
-                    className="filter-input filter-select filter-multiselect-trigger"
-                    onClick={() => setJobTypeDropdownOpen((o) => !o)}
-                    aria-expanded={jobTypeDropdownOpen}
-                    aria-haspopup="listbox"
-                  >
-                    {jobTypeLabel}
-                    <span className="filter-multiselect-arrow">{jobTypeDropdownOpen ? '▲' : '▼'}</span>
-                  </button>
-                  {jobTypeDropdownOpen && (
-                    <div
-                      className="filter-multiselect-dropdown"
-                      role="listbox"
-                      aria-multiselectable="true"
-                    >
-                      {JOB_TYPE_OPTIONS.map((opt) => (
-                        <label
-                          key={opt.value}
-                          className="filter-multiselect-option"
-                          role="option"
-                          aria-selected={jobRoles.includes(opt.value)}
-                        >
-                          <input
-                            type="checkbox"
-                            checked={jobRoles.includes(opt.value)}
-                            onChange={() => toggleJobRole(opt.value)}
-                          />
-                          {t[opt.labelKey]}
-                        </label>
-                      ))}
-                    </div>
-                  )}
-                </div>
-                {jobTypeDropdownOpen && (
-                  <div
-                    className="filter-multiselect-backdrop"
-                    role="presentation"
-                    onClick={() => setJobTypeDropdownOpen(false)}
-                    aria-hidden="true"
-                  />
-                )}
-                <span className="filter-bar-label">{t.locationCountry}</span>
-                <select
-                  value={locationCountry}
-                  onChange={(e) => setLocationCountry(e.target.value)}
-                  className="filter-input filter-select"
-                  aria-label={t.locationCountry}
-                >
-                  <option value="">{t.locationAny}</option>
-                  <option value="Canada">{t.locationCanada}</option>
-                  <option value="United States">{t.locationUS}</option>
-                </select>
                 <label className="filter-bar-check">
                   <input
                     type="checkbox"
@@ -494,6 +610,48 @@ export default function App() {
                   />
                   {t.refreshJobsFirst}
                 </label>
+                {refreshJobsFirst && (
+                  <>
+                    <span className="filter-bar-label">{t.scrapeSites}</span>
+                    <label className="filter-bar-check">
+                      <input
+                        type="checkbox"
+                        checked={scrapeIndeed}
+                        onChange={(e) => setScrapeIndeed(e.target.checked)}
+                      />
+                      {t.scrapeIndeed}
+                    </label>
+                    <label className="filter-bar-check">
+                      <input
+                        type="checkbox"
+                        checked={scrapeLinkedIn}
+                        onChange={(e) => setScrapeLinkedIn(e.target.checked)}
+                      />
+                      {t.scrapeLinkedIn}
+                    </label>
+                    <span className="filter-bar-label">{t.scrapeIndeedCount}</span>
+                    <input
+                      type="number"
+                      min={1}
+                      max={300}
+                      value={scrapeIndeedCount}
+                      onChange={(e) => setScrapeIndeedCount(Math.max(1, Math.min(300, Number(e.target.value) || 1)))}
+                      className="filter-input filter-input-num"
+                      aria-label={t.scrapeIndeedCount}
+                    />
+                    <span className="filter-bar-label">{t.scrapeLinkedInCount}</span>
+                    <input
+                      type="number"
+                      min={1}
+                      max={300}
+                      value={scrapeLinkedInCount}
+                      onChange={(e) => setScrapeLinkedInCount(Math.max(1, Math.min(300, Number(e.target.value) || 1)))}
+                      className="filter-input filter-input-num"
+                      aria-label={t.scrapeLinkedInCount}
+                    />
+                    {selectedRoles.length >= 5 ? <Tag color="orange">{t.searchQueryLimit}</Tag> : null}
+                  </>
+                )}
                 <p className="filter-hint">{t.filterHint}</p>
                 <span className="filter-actions">
                   <button type="button" className="filter-reset-btn" onClick={handleResetFilters}>

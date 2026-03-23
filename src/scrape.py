@@ -9,31 +9,33 @@ from __future__ import annotations
 import pandas as pd
 
 
-RESULTS_PER_SITE: dict[str, int] = {
-    "indeed": 100,
-    "linkedin": 30,
-}
-
-
 def run_scrape(
     search_term: str = "Software Engineer",
     location: str = "Canada",
     results_wanted: int = 100,
     site_name: list[str] | None = None,
+    site_results_wanted: dict[str, int] | None = None,
     country_indeed: str = "Canada",
 ) -> pd.DataFrame:
     """Scrape each site separately and concatenate results.
 
-    Per-site result counts are controlled by RESULTS_PER_SITE
-    (indeed=100, linkedin=30); sites not listed fall back to results_wanted.
+    Per-site result counts are controlled by results_wanted.
     LinkedIn uses linkedin_fetch_description=True for full JD text (slower).
     """
     from jobspy import scrape_jobs
     if site_name is None:
         site_name = ["indeed", "linkedin"]
+    per_site = {}
+    if site_results_wanted:
+        for k, v in site_results_wanted.items():
+            try:
+                per_site[str(k).strip().lower()] = max(1, int(v))
+            except Exception:
+                continue
     frames = []
     for site in site_name:
-        n = RESULTS_PER_SITE.get(site, results_wanted)
+        site_key = str(site).strip().lower()
+        n = per_site.get(site_key, max(1, int(results_wanted)))
         print(f"Scraping {site} (up to {n} results)… this may take a while, please wait.")
         try:
             df = scrape_jobs(
